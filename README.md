@@ -18,7 +18,7 @@ Core features:
 	
 Notice:
 
-1. `nil` is the very annoy params in lua because it not only a `none` value but also a `absent` method args. 
+1. `nil` is the very annoy params in lua because it not only `none` value but also `absent` argument. 
 	we can not tell the difference, so if we curry the method, the nil args is rejected to send or the method 
  	will return a `curried` function as a invalid result.
  	
