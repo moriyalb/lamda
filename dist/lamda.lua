@@ -2849,14 +2849,10 @@ R.length = _curry1(function(v)
 	if _isArray(v) then
 		return #v
 	elseif type(v) == "table" then
-		local len = 0
-		for _,_ in pairs(v) do
-			len = len + 1
-		end
-		return len
+		return R.lengthObj(v)
 	elseif type(v) == "string" then
 		return string.len(v)
-	else 
+	else
 		return 0
 	end
 end)
@@ -2864,6 +2860,14 @@ end)
 	@alias length
 ]]
 R.size = R.length
+
+R.lengthObj = _curry1(function(v)
+	local len = 0
+	for _,_ in pairs(v) do
+		len = len + 1
+	end
+	return len
+end)
 
 
 --[[
