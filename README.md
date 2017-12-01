@@ -14,7 +14,7 @@ Core features:
 2. Auto curried.
 
 3. Functional support
-	we got the R.piple/R.compose/R.o methods to make new fucntions.
+	we got the R.piple/R.compose/R.o methods to make new functions.
 	
 Notice:
 
