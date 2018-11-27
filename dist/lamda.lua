@@ -1171,7 +1171,7 @@ end)
      @func
      @memberOf R
      @category Logic
-     @sig [[(*... -> Boolean),(*... -> *)] ] -> (*... -> *)
+     @sig [ [(*... -> Boolean),(*... -> *)] ] -> (*... -> *)
      @param {Array} pairs A list of [predicate, transformer]
      @return {Function}
      @example
@@ -2167,7 +2167,7 @@ end)
      @func
      @memberOf R
      @category List
-     @sig ((a, a) → Boolean) → [a] → [[a] ]
+     @sig ((a, a) → Boolean) → [a] → [ [a] ]
      @param {Function} fn Function for determining whether two given (adjacent)
             elements should be in the same group
      @param {Array} list The array to group. Also accepts a string, which will be
@@ -3053,7 +3053,7 @@ end)
           local digits = ['1', '2', '3', '4']
           local append = (a, b) => [a + b, a + b]
      
-          R.mapAccumRight(append, 5, digits) -- => [['12345', '2345', '345', '45'], '12345']
+          R.mapAccumRight(append, 5, digits) -- => [ ['12345', '2345', '345', '45'], '12345']
      @symb R.mapAccumRight(f, a, [b, c, d]) = [
        [
          f(b, f(c, f(d, a)[0])[0])[1],
@@ -3914,7 +3914,7 @@ end)
      @example
      
           R.of(null) -- => [null ]
-          R.of([42]) -- => [[42] ]
+          R.of([42]) -- => [ [42] ]
 ]]
 R.of = _curry1(_of)
 
@@ -4224,7 +4224,7 @@ end)
           R.pluck(0)([[1, 2], [3, 4] ])   -- => [1, 3]
           R.pluck('val', {a: {val: 3}, b: {val: 5}}) -- => {'a':3, 'b':5}
      @symb R.pluck('x', [{x: 1, y: 2}, {x: 3, y: 4}, {x: 5, y: 6}]) = [1, 3, 5]
-     @symb R.pluck(0, [[1, 2], [3, 4], [5, 6] ]) = [1, 3, 5]
+     @symb R.pluck(0, [ [1, 2], [3, 4], [5, 6] ]) = [1, 3, 5]
 ]]
 R.pluck = _curry2(function(p, list)
 	return R.mapObject(R.prop(p), list)
@@ -5267,8 +5267,8 @@ end)
      
           local sortByFirstItem = R.sortBy(R.prop(0))
           local sortByNameCaseInsensitive = R.sortBy(R.compose(R.toLower, R.prop('name')))
-          local pairs = [[-1, 1], [-2, 2], [-3, 3] ]
-          sortByFirstItem(pairs) -- => [[-3, 3], [-2, 2], [-1, 1] ]
+          local pairs = [ [-1, 1], [-2, 2], [-3, 3] ]
+          sortByFirstItem(pairs) -- => [ [-3, 3], [-2, 2], [-1, 1] ]
           local alice = {
             name =  'ALICE',
             age =  101
@@ -5375,14 +5375,14 @@ end)
      @memberOf R
      @since v0.19.0
      @category List
-     @sig Number -> [a] -> [[a], [a] ]
+     @sig Number -> [a] -> [ [a], [a] ]
      @sig Number -> String -> [String, String]
      @param {Number} index The index where the array/string is split.
      @param {Array|String} array The array/string to be split.
      @return {Array}
      @example
      
-          R.splitAt(1, [1, 2, 3])          -- => [[1], [2, 3] ]
+          R.splitAt(1, [1, 2, 3])          -- => [ [1], [2, 3] ]
           R.splitAt(5, 'hello world')      -- => ['hello', ' world']
           R.splitAt(-1, 'foobar')          -- => ['fooba', 'r']
 ]]
@@ -5400,14 +5400,14 @@ end)
      @memberOf R
      @since v0.16.0
      @category List
-     @sig Number -> [a] -> [[a] ]
+     @sig Number -> [a] -> [ [a] ]
      @sig Number -> String -> [String]
      @param {Number} n
      @param {Array} list
      @return {Array}
      @example
      
-          R.splitEvery(3, [1, 2, 3, 4, 5, 6, 7]) -- => [[1, 2, 3], [4, 5, 6], [7] ]
+          R.splitEvery(3, [1, 2, 3, 4, 5, 6, 7]) -- => [ [1, 2, 3], [4, 5, 6], [7] ]
           R.splitEvery(3, 'foobarbaz') -- => ['foo', 'bar', 'baz']
 ]]
 R.splitEvery = _curry2(function(n, list)
@@ -5434,13 +5434,13 @@ end)
      @memberOf R
      @since v0.19.0
      @category List
-     @sig (a -> Boolean) -> [a] -> [[a], [a] ]
+     @sig (a -> Boolean) -> [a] -> [ [a], [a] ]
      @param {Function} pred The predicate that determines where the array is split.
      @param {Array} list The array to be split.
      @return {Array}
      @example
      
-          R.splitWhen(R.equals(2), [1, 2, 3, 1, 2, 3])   -- => [[1], [2, 3, 1, 2, 3] ]
+          R.splitWhen(R.equals(2), [1, 2, 3, 1, 2, 3])   -- => [ [1], [2, 3, 1, 2, 3] ]
 ]]
 R.splitWhen = _curry2(function(pred, list)
 	local idx = 1
@@ -5938,13 +5938,13 @@ end)
      @memberOf R
      @since v0.4.0
      @category Object
-     @sig {String: *} -> [[String,*] ]
+     @sig {String: *} -> [ [String,*] ]
      @param {Object} obj The object to extract from
      @return {Array} An array of key, value arrays from the object's own properties.
      @see R.fromPairs
      @example
      
-          R.toPairs({a: 1, b: 2, c: 3}) -- => [['a', 1], ['b', 2], ['c', 3] ]
+          R.toPairs({a: 1, b: 2, c: 3}) -- => [ ['a', 1], ['b', 2], ['c', 3] ]
 ]]
 R.toPairs = _curry1(function(obj)
 	local pairs = {}
@@ -5966,19 +5966,19 @@ end)
      @memberOf R
      @since v0.19.0
      @category List
-     @sig [[a] ] -> [[a] ]
+     @sig [ [a] ] -> [ [a] ]
      @param {Array} list A 2D list
      @return {Array} A 2D list
      @example
      
-          R.transpose([[1, 'a'], [2, 'b'], [3, 'c'] ]) -- => [[1, 2, 3], ['a', 'b', 'c'] ]
-          R.transpose([[1, 2, 3], ['a', 'b', 'c'] ]) -- => [[1, 'a'], [2, 'b'], [3, 'c'] ]
+          R.transpose([ [1, 'a'], [2, 'b'], [3, 'c'] ]) -- => [ [1, 2, 3], ['a', 'b', 'c'] ]
+          R.transpose([ [1, 2, 3], ['a', 'b', 'c'] ]) -- => [ [1, 'a'], [2, 'b'], [3, 'c'] ]
      
           -- If some of the rows are shorter than the following rows, their elements are skipped:
-          R.transpose([[10, 11], [20], [], [30, 31, 32] ]) -- => [[10, 20, 30], [11, 31], [32] ]
-     @symb R.transpose([[a], [b], [c] ]) = [a, b, c]
-     @symb R.transpose([[a, b], [c, d] ]) = [[a, c], [b, d] ]
-     @symb R.transpose([[a, b], [c] ]) = [[a, c], [b] ]
+          R.transpose([ [10, 11], [20], [], [30, 31, 32] ]) -- => [ [10, 20, 30], [11, 31], [32] ]
+     @symb R.transpose([ [a], [b], [c] ]) = [a, b, c]
+     @symb R.transpose([ [a, b], [c, d] ]) = [ [a, c], [b, d] ]
+     @symb R.transpose([ [a, b], [c] ]) = [ [a, c], [b] ]
 ]]
 R.transpose = _curry1(function(outerlist)
 	local i = 1
@@ -6200,7 +6200,7 @@ end)
      
           R.uniq([1, 1, 2, 1]) -- => [1, 2]
           R.uniq([1, '1'])     -- => [1, '1']
-          R.uniq([[42], [42] ]) -- => [[42] ]
+          R.uniq([ [42], [42] ]) -- => [ [42] ]
 ]]
 R.uniq = R.uniqBy(R.identity)
 
@@ -6411,8 +6411,8 @@ end)
      @see R.flatten, R.chain
      @example
      
-          R.unnest([1, [2], [[3] ] ]) -- => [1, 2, [3] ]
-          R.unnest([[1, 2], [3, 4], [5, 6] ]) -- => [1, 2, 3, 4, 5, 6]
+          R.unnest([1, [2], [ [3] ] ]) -- => [1, 2, [3] ]
+          R.unnest([ [1, 2], [3, 4], [5, 6] ]) -- => [1, 2, 3, 4, 5, 6]
 ]]
 R.unnest = R.chain(_identity)
 
@@ -6687,15 +6687,15 @@ end)
      @memberOf R
      @since v0.1.0
      @category List
-     @sig [a] -> [b] -> [[a,b] ] 
+     @sig [a] -> [b] -> [ [a,b] ] 
      @param {Array} as The first list.
      @param {Array} bs The second list.
      @return {Array} The list made by combining each possible pair from
              `as` and `bs` into pairs (`[a, b]`).
      @example
      
-          R.xprod([1, 2], ['a', 'b']) -- => [[1, 'a'], [1, 'b'], [2, 'a'], [2, 'b'] ]
-     @symb R.xprod([a, b], [c, d]) = [[a, c], [a, d], [b, c], [b, d] ]
+          R.xprod([1, 2], ['a', 'b']) -- => [ [1, 'a'], [1, 'b'], [2, 'a'], [2, 'b'] ]
+     @symb R.xprod([a, b], [c, d]) = [ [a, c], [a, d], [b, c], [b, d] ]
 ]]
     ---- = xprodWith(prepend) (takes about 3 times as long...)
 R.xprod = _curry2(function(a, b)
@@ -6729,14 +6729,14 @@ end)
      @memberOf R
      @since v0.1.0
      @category List
-     @sig [a] -> [b] -> [[a,b] ]
+     @sig [a] -> [b] -> [ [a,b] ]
      @param {Array} list1 The first array to consider.
      @param {Array} list2 The second array to consider.
      @return {Array} The list made by pairing up same-indexed elements of `list1` and `list2`.
      @example
      
-          R.zip([1, 2, 3], ['a', 'b', 'c']) -- => [[1, 'a'], [2, 'b'], [3, 'c'] ]
-     @symb R.zip([a, b, c], [d, e, f]) = [[a, d], [b, e], [c, f] ]
+          R.zip([1, 2, 3], ['a', 'b', 'c']) -- => [ [1, 'a'], [2, 'b'], [3, 'c'] ]
+     @symb R.zip([a, b, c], [d, e, f]) = [ [a, d], [b, e], [c, f] ]
 ]]
 R.zip = _curry2(function(a, b)
 	local rv = {}
