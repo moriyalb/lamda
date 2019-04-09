@@ -2,6 +2,8 @@ Lamda
 https://github.com/moriyalb/lamda
 =============
 
+[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
+
 A practical functional library for lua programmers. 
 
 Ported from the JavaScript version https://github.com/ramda/ramda
