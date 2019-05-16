@@ -7,7 +7,7 @@
 -- @String is treated as Array(lua table)
 -- @All method is auto curried
 -- @`nil` is the very annoy params in lua because it not only a `none` value but also a `absent` method args. 
--- 	we can not make the difference, so if we curry the method, the nil args is rejected to send or the method 
+-- 	we can not tell the difference, so if we curry the method, the nil args is rejected to send or the method 
 -- 	will return a `curried` function as a invalid result.
 -- @All method is immutable function without side effect
 -- @All sort method is none-stable (based on lua table.sort), a stable version may released later.
@@ -15,6 +15,10 @@
 -- @All method doesn't handle the self param, you may take care of it (unlike javascript, `self` is as normal as any other method args)
 -- @Try think functional by using this library
 
+-- Enjoy it.
+-- local R = Cupid.Libs.Lamda
+-- local sayHello = R.compose(R.join(" "), R.map(R.pipe(R.toUpper, R.trim, R.take(3))), R.split(","))
+-- R.call(print, sayHello("Hello, Lamda!"))
 
 local R = {}
 
@@ -201,7 +205,7 @@ local _isString = function(val)
 end
 
 local _isMap = function(val)
-	return val ~= nil and type(val) == "table" and (next(val) ~= nil and #val == 0)
+	return val ~= nil and type(val) == "table" and (next(val) == nil or #val == 0)
 end
 
 local _isInteger = function(val)
@@ -855,7 +859,7 @@ end)
 R.ascend = _curry3(function(fn, a, b)
 	local aa = fn(a)
 	local bb = fn(b)
-    return aa < bb and -1 or (aa > bb and 1 or 0)
+    return aa > bb
 end)
 
 
@@ -980,7 +984,7 @@ end)
         local strlen = R.bind(string.len, str)
         R.map(strlen, R.split(",", "123,4,56789")) -- {16,16,16}
 
-     @symb R.bind(f, o)(a, b) = f(o, a, b)
+	 @symb R.bind(f, o)(a, b) = f(o, a, b)
 ]]
 R.bind = _curry2(function(fn, thisObj)
 	return  function (...)
@@ -1261,6 +1265,14 @@ R.complement = _curry1(_complement)
           R.contains({42}, {{42}}) -- => true
 ]]
 R.contains = _curry2(_contains)
+R.containsNoCurry = function(x, xs)
+	for i, v in ipairs(xs) do
+		if v == x then
+			return true
+		end
+	end	
+	return false
+end
 
 --[[
      Accepts a converging function and a list of branching functions and returns
@@ -1411,7 +1423,7 @@ end
 R.descend = _curry3(function(fn, a, b)
 	local aa = fn(a)
 	local bb = fn(b)
-	return aa > bb and -1 or (aa < bb and 1 or 0)
+	return aa < bb
 end)
 
 --[[
@@ -2701,13 +2713,25 @@ end)
           R.isEmpty({1, 2, 3})   -- => false
           R.isEmpty({})          -- => true
           R.isEmpty('')          -- => true
-          R.isEmpty(nil)        -- => false
+          R.isEmpty(nil)        -- => true -- change to true
           R.isEmpty({})          -- => true
           R.isEmpty({length = 0}) -- => false
 	 @notify can not curry this function
 ]]
+-- R.isEmpty = function(x)
+-- 	return x == nil or R.equals(x, R.empty(x))
+-- end
+
 R.isEmpty = function(x)
-	return x ~= nil and R.equals(x, R.empty(x))
+	if x == nil then 
+		return true
+	elseif type(x) == "string" then 
+		return x == ""
+	elseif type(x) == "table" then
+		return next(x) == nil
+	else
+		return false
+	end
 end
 
 --[[
@@ -2752,6 +2776,18 @@ end
 R.join = _curry2(function(sep, xs)
 	return table.concat(R.map(R.toString, xs), sep)
 end)
+
+R.joinNoCurry = function(sep, xs)
+	local out = ""
+	for i, v in ipairs(xs) do
+		if i == 1 then
+			out = v
+		else
+			out = out .. sep .. v
+		end
+	end
+	return out
+end
 
 --[[
      juxt applies a list of functions to a list of values.
@@ -2803,6 +2839,15 @@ R.keys = _curry1(function(obj)
 	end
 end)
 
+R.dictKeys = _curry1(function(obj)
+	if not obj then return {} end
+	local keys = {}
+	for k, v in pairs(obj)	do
+		table.insert(keys, k)
+	end
+	return keys
+end)
+
 --[[
      Returns the position of the last occurrence of an item in an array, or -1 if
      the item is not included in the array. [`R.equals`](#equals) is used to
@@ -2822,9 +2867,19 @@ end)
           R.lastIndexOf(10, {1,2,3,4}) -- => -1
 ]]
 R.lastIndexOf = _curry2(function(target, xs)
-	for k,v in ipairs(xs) do
-		if R.equals(v, target) then
-			return k
+	if type(xs) == "string" then
+		for i = string.len(xs), idx, -1 do
+			if string.sub(xs, i, i) == target then
+				return i
+			end
+		end
+	else
+		idx = #xs
+		while idx >= 1 do
+			if R.equals(target, xs[idx]) then
+				return idx
+			end
+			idx = idx -1
 		end
 	end
 	return -1
@@ -3472,7 +3527,7 @@ end)
           -- => { a: true, b: true, values: [10, 20, 15, 35] }
 ]]
 R.mergeWith = _curry3(function(fn, l, r)
-	return mergeWithKey(function (_, _l, _r)
+	return R.mergeWithKey(function (_, _l, _r)
 		return fn(_l, _r)
 	end, l, r)
 end)
@@ -4757,6 +4812,27 @@ R.countBy = R.reduceBy(function (acc, elem)
 	return acc + 1
 end, 0)
 
+R.count = _curry2(function(c, list)
+	local index = 1
+	local result = 0
+	if _isString(list) then		
+		while index <= string.len(list) do
+			if R.equals(c, string.sub(list, index, index)) then
+				result = result + 1
+			end
+			index = index + 1
+		end
+	else
+		while index <= #list do
+			if R.equals(c, list[index]) then
+				result = result + 1
+			end
+			index = index + 1
+		end
+	end
+	return result
+end)
+
 --[[
      Splits a list into sub-lists stored in an object, based on the result of
      calling a String-returning function on each element, and grouping the
@@ -6017,45 +6093,31 @@ R.trim = _curry1(function(s)
 	if not s or not _isString(s) then
 		return ""
 	end
-		return (s:gsub("^%s*(.-)%s*$", "%1"))
+	return (s:gsub("^%s*(.-)%s*$", "%1"))
 end)
+
+R.strip = R.trim
 
 --[[
-     `tryCatch` takes two functions, a `tryer` and a `catcher`. The returned
-     function evaluates the `tryer` if it does not throw, it simply returns the
-     result. If the `tryer` *does* throw, the returned function evaluates the
-     `catcher` function and returns its result. Note that for effective
-     composition with this function, both the `tryer` and `catcher` functions
-     must return the same type of results.
-     
-     @func
-     @memberOf R
-     @since v0.20.0
-     @category Function
-     @sig (...x -> a) -> ((e, ...x) -> a) -> (...x -> a)
-     @param {Function} tryer The function that may throw.
-     @param {Function} catcher The function that will be evaluated if `tryer` throws.
-     @return {Function} A new function that will catch exceptions and send then to the catcher.
-     @example
-     
-          R.tryCatch(R.prop('x'), R.F)({x: true}) -- => true
-          R.tryCatch(R.prop('x'), R.F)(null)      -- => false
+     `tryCatch` for lua
+	@not curry this
 ]]
-R.tryCatch = _curry2(function(tryer, catcher)
-	return function (...)
-		local error
-		local success, result = xpcall(tryer, function(err)
-			error = err
-		end, ...)
-		print(success, result, error)
-		if success then
-			return result
-		else
-			return catcher(error)
+R.tryCatch = function(tryer, catcher, final)
+	local error
+	local success, result = xpcall(tryer, function(err)
+		error = err
+	end)
+	if not success then
+		if catcher then
+			catcher(error)
+		else 
+			print("Exception Got -> ", error)
 		end
 	end
-end)
-
+	if final then
+		final()
+	end
+end
 
 --[[
      Takes a function `fn`, which takes a single array argument, and returns a
@@ -6510,6 +6572,13 @@ R.values = _curry1(function(obj)
 	return R.map(R.first, obj)
 end)
 
+R.valuesObj = _curry1(function(obj)	
+	local values = {}
+	for _, p in pairs(obj) do
+		table.insert(values, p)
+	end
+	return values
+end)
 
 --[[
      Returns a "view" of the given data structure, determined by the given lens.
@@ -6815,6 +6884,70 @@ R.zipWith = _curry3(function(fn, a, b)
 	return rv
 end)
 
+--new utils functions.
+--!!notice, non-pure function ,it's always change the input list!!
+R.randrange = function(from, to)
+	if from > to then return math.floor(from) end
+	local delta = math.floor(to - from)
+	if delta < 1 then return math.floor(from) end
+	return math.floor(delta * math.random() + from)
+end
+
+R.shuffle = function(list)
+	if not list or #list == 0 then return list end
+	for i = 1, #list do
+		local rnd = math.random(i, #list)
+		list[i], list[rnd] = list[rnd], list[i]
+	end
+	
+	return out
+end
+
+--pure function
+R.sample = _curry3(function(count, shuffle, list)
+	if #list == 0 or count <= 0 then
+		return nil
+	end
+
+	local out = {}
+	if count == 1 or #list > count * 5 then
+        local indexs = {}
+        for i = 1, count do
+            local index = math.random(1, #list)
+            while indexs[index] do
+                index = math.random(1, #list)
+			end
+            indexs[index] = true
+            table.insert(out, list[index])
+        end
+    else
+        for i = 1, #list do
+			local p = (count - #out) / (#list - i + 1)
+			--print("check p ", count, #list, p)
+            if p > math.random() then
+                table.insert(out, list[i])
+			end
+        end
+        if shuffle then
+            R.shuffle(out)
+		end
+	end
+	
+	return out
+end)
+
+--pure function
+R.choice = R.o(R.head, R.sample(1, false))
+
+-- Normal stochastic algorithm
+-- box muller 算法， 生成一个以mu为平均值，sigma为标准偏差的正态分布随机数
+R.boxMullerSampling = function(mu, sigma)
+	local u = math.random()
+	local v = math.random()
+	local z0 = math.sqrt(-2 * math.log(u)) * math.cos(2 * math.pi * v)
+	--local z1 = math.sqrt(-2 * math.log(u)) * math.sin(2 * math.pi * v)
+	return mu + z0 * sigma
+end
 
 R.NULL = "@@null"
 R.ARRAY = "@@array"
