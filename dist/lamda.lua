@@ -5344,7 +5344,7 @@ end)
           local sortByFirstItem = R.sortBy(R.prop(0))
           local sortByNameCaseInsensitive = R.sortBy(R.compose(R.toLower, R.prop('name')))
           local pairs = [ [-1, 1], [-2, 2], [-3, 3] ]
-          sortByFirstItem(pairs) -- =>  [ [-3, 3], [-2, 2], [-1, 1] ]
+          sortByFirstItem(pairs) -- => [ [-3, 3], [-2, 2], [-1, 1] ]
           local alice = {
             name =  'ALICE',
             age =  101
@@ -6764,7 +6764,7 @@ end)
      @example
      
           R.xprod([1, 2], ['a', 'b']) -- => [ [1, 'a'], [1, 'b'], [2, 'a'], [2, 'b'] ]
-     @symb R.xprod([a, b], [c, d]) =  [ [a, c], [a, d], [b, c], [b, d] ]
+     @symb R.xprod([a, b], [c, d]) = [ [a, c], [a, d], [b, c], [b, d] ]
 ]]
     ---- = xprodWith(prepend) (takes about 3 times as long...)
 R.xprod = _curry2(function(a, b)
