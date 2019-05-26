@@ -6890,6 +6890,8 @@ R.randrange = function(from, to)
 	if from > to then return math.floor(from) end
 	local delta = math.floor(to - from)
 	if delta < 1 then return math.floor(from) end
+	local seed = tostring(os.time()):reverse():sub(1, 6)
+	math.randomseed(seed)
 	return math.floor(delta * math.random() + from)
 end
 
@@ -6899,8 +6901,7 @@ R.shuffle = function(list)
 		local rnd = math.random(i, #list)
 		list[i], list[rnd] = list[rnd], list[i]
 	end
-	
-	return out
+	return list
 end
 
 --pure function
