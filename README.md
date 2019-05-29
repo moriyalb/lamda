@@ -1,24 +1,33 @@
-Lamda 
-https://github.com/moriyalb/lamda
-=============
-
-[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
+# Lamda 
 
 A practical functional library for lua programmers. 
-
 Ported from the JavaScript version https://github.com/ramda/ramda
 
-Core features:
+[![Build Status](https://travis-ci.org/moriyalb/lamda.svg?branch=master)](https://travis-ci.org/moriyalb/lamda)
+[![unstable](http://badges.github.io/stability-badges/dist/unstable.svg)](http://github.com/badges/stability-badges)
+
+[![Badge](https://img.shields.io/badge/link-996.icu-%23FF4D5B.svg?style=flat-square)](https://996.icu/#/en_US)
+[![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg?style=flat-square)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
+[![MIT Licence](https://badges.frapsoft.com/os/mit/mit.svg?v=103)](https://opensource.org/licenses/mit-license.php)
+
+# Usage
+
+```lua
+	local R = require("lamda")
+	local sayHello = R.compose(R.join(" "), R.map(R.pipe(R.toUpper, R.trim, R.take(3))), R.split(","))
+	R.call(print, sayHello("Hello, Lamda!"))
+```
+
+# Features
 
 1. Immutable 
-	All method is immutable function without side effect. placeholder is supported ( R.__ )
+	All functions is immutable without side effect. 
+2. Functional
+	You can write lua code in functional style. 	
+3. Auto curried
+	Most function is auto curried. Placeholder is also supported.
 	
-2. Auto curried.
-
-3. Functional support
-	we got the R.piple/R.compose/R.o methods to make new functions.
-	
-Notice:
+# Notice
 
 1. `nil` is the very annoy params in lua because it not only `none` value but also `absent` argument. 
 	we can not tell the difference, so if we curry the method, the nil args is rejected to send or the method 
