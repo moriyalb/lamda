@@ -18,6 +18,14 @@ Ported from the JavaScript version https://github.com/ramda/ramda
 	R.call(print, sayHello("Hello, Lamda!"))
 ```
 
+# Test
+
+I use luaunit to test all functions.
+you can test the lamda function simple like
+```
+	lua run_test_all.lua -v
+```
+
 # Features
 
 1. Immutable 
