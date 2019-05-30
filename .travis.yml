@@ -36,8 +36,8 @@ cache:
     - $TRAVIS_BUILD_DIR/install
 
 script: 
-  - lua -v run_test_all.lua --coverage
-  - luacheck *.lua test/
+  - lua -v run_test_all.lua
+  # - luacheck *.lua test/ 
 
 after_success:
   - luacov-coveralls -v --include %./dist/lamda.lua
