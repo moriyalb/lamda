@@ -58,7 +58,7 @@
   * now take object argument
   * the traverse function take `value` and `key` now
   
-  
+
 ## Bug Fixed
 * curry function
   * now will taken more arguments
@@ -69,6 +69,10 @@
 	f(1)(2)(3) --> error
 	f(1)(2, 3) --> 123
 ```
+
+* unpack bug
+  * from lua5.2, the `unpack` function must be called as `table.unpack` 
+
 * R.ascend & R.decend is transposed
 * R.curry3 return `nil` when no arguments is passed in
 * R.isEmpty will check `nan` and `inf` value
@@ -80,6 +84,7 @@
 * R.drop & R.dropLast & R.dropLastWhile & R.dropWhile
   * will work now
   * return default empty value now
+
 
 ## Removed
 * R.containsNoCurry

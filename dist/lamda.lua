@@ -42,6 +42,10 @@ R.USERDATA = "@@user"
 -- =================================================== 
 R.__ = { ['@@functional/placeholder'] = true }
 local __INF = 1/0
+local unpack = unpack
+if unpack == nil then
+	unpack = table.unpack
+end
 
 local _isPlaceholder = function(a)
     return a ~= nil and type(a) == 'table' and a['@@functional/placeholder']
@@ -2480,6 +2484,41 @@ end)
 R.flatten = _curry1(_makeFlat(true))
 
 --[[
+	Iterate over an input `list`, calling a provided function `fn` for each
+	element in the list.
+	
+	`fn` receives one argument: *(value)*.    
+	
+	@func
+	@category Array
+	@category Object
+	@sig (a -> *) -> [a] -> [a]
+	@param {Function} fn The function to invoke. Receives argument, `value` and `key`.
+	@param {Array} list The list to iterate over.
+	@return {Array} The original list.
+	@see R.addIndex
+	@example
+		local printXPlusFive = function(x) print(x + 5) end
+		R.forEach(printXPlusFive, {1, 2, 3})
+		--> 6
+		--> 7
+		--> 8
+	@symb R.forEach(f, {a, b, c}) = {a, b, c}
+]]
+R.forEach = _curry2(function(fn, list)
+	if _isObject(list) then
+		for k, v in pairs(list) do
+			fn(v, k)
+		end
+	elseif _isArray(list) then
+		for k, v in ipairs(list) do
+			fn(v, k)
+		end
+	end
+	return list
+end)
+
+--[[
 	Returns the elements of the given list or string from `fromIndex` (inclusive) to `toIndex` (exclusive).	
 	if `fromIndex` is zero then it will set to 1(from the first element)
 	if `toIndex` is zero then it will set to length + 1(include the last element)
@@ -2911,57 +2950,23 @@ end)
 
 
 
+
+
+
+
 --[[
-	Iterate over an input `list`, calling a provided function `fn` for each
-	element in the list.
-	
-	`fn` receives one argument: *(value)*.    
+	Creates a new object from a list key-value pairs. If a key appears in
+	multiple pairs, the rightmost pair is included in the object.
 	
 	@func
+
 	@category Array
-	@category Object
-	@sig (a -> *) -> [a] -> [a]
-	@param {Function} fn The function to invoke. Receives argument, `value` and `key`.
-	@param {Array} list The list to iterate over.
-	@return {Array} The original list.
-	@see R.addIndex
-	@example
-		local printXPlusFive = function(x) print(x + 5) end
-		R.forEach(printXPlusFive, {1, 2, 3})
-		--> 6
-		--> 7
-		--> 8
-	@symb R.forEach(f, {a, b, c}) = {a, b, c}
-]]
-R.forEach = _curry2(function(fn, list)
-	if _isObject(list) then
-		for k, v in pairs(list) do
-			fn(v, k)
-		end
-	elseif _isArray(list) then
-		for k, v in ipairs(list) do
-			fn(v, k)
-		end
-	end
-	return list
-end)
-
-
-
---[[
-     Creates a new object from a list key-value pairs. If a key appears in
-     multiple pairs, the rightmost pair is included in the object.
-     
-     @func
-
-     @category List
-     @sig {{k,v}} -> {k: v}
-     @param {Array} pairs An array of two-element arrays that will be the keys and values of the output object.
-     @return {Object} The object made by pairing up `keys` and `values`.
-     @see R.toPairs, R.pair
-     @example
-     
-          R.fromPairs({{'a', 1}, {'b', 2}, {'c', 3}}) --> {a = 1, b = 2, c = 3}
+	@sig {{k,v}} -> {k: v}
+	@param {Array} pairs An array of two-element arrays that will be the keys and values of the output object.
+	@return {Object} The object made by pairing up `keys` and `values`.
+	@see R.toPairs, R.pair
+	@example	
+		R.fromPairs({{'a', 1}, {'b', 2}, {'c', 3}}) --> {a = 1, b = 2, c = 3}
 ]]
 R.fromPairs = _curry1(function(pairs)
 	local result = {}
