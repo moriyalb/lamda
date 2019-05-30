@@ -22,10 +22,26 @@
 
 local R = {}
 
+-- ===========================================
+-- ================ Constants ================
+-- ===========================================
+R.ARRAY = "@@array"
+R.OBJECT = "@@object"
+R.TABLE = "@@table"
+R.STRING = "@@string"
+R.NAN = "@@nan"
+R.INF = "@@inf"
+R.INTEGER = "@@int"
+R.NUMBER = "@@number"
+R.NIL = "@@nil"
+R.FUNCTION = "@@func"
+R.USERDATA = "@@user"
+
 -- ===================================================
 -- ================ Private Functions ================
 -- =================================================== 
 R.__ = { ['@@functional/placeholder'] = true }
+local __INF = 1/0
 
 local _isPlaceholder = function(a)
     return a ~= nil and type(a) == 'table' and a['@@functional/placeholder']
@@ -51,7 +67,6 @@ local _curry1 = function(fn)
 	end
 	return f1
 end
-R.curry1 = _curry1
 
 --[[
 	Optimized internal two-arity curry function.
@@ -68,20 +83,19 @@ local _curry2 = function(fn)
 		if #args == 0 then
 			return f2
 		elseif #args == 1 then
-			return _isPlaceholder(args[1]) and f2 or _curry1(function(_b)
-				return fn(args[1], _b)
+			return _isPlaceholder(args[1]) and f2 or _curry1(function(...)
+				return fn(args[1], ...)
 			end)
 		else
-			return (_isPlaceholder(args[1]) and _isPlaceholder(args[2])) and f2 or (_isPlaceholder(args[1]) and _curry1(function (_a)
-			 		return fn(_a, args[2])
-			end) or (_isPlaceholder(args[2]) and _curry1(function (_b)
-					return fn(args[1], _b)
-			end) or fn(args[1], args[2])))
+			return (_isPlaceholder(args[1]) and _isPlaceholder(args[2])) and f2 or (_isPlaceholder(args[1]) and _curry1(function (_a, ...)
+			 	return fn(_a, args[2], ...)
+			end) or (_isPlaceholder(args[2]) and _curry1(function (...)
+				return fn(args[1], ...)
+			end) or fn(...)))
 		end
 	end
 	return f2
 end
-R.curry2 = _curry2
 
 --[[
 	Optimized internal three-arity curry function.
@@ -92,58 +106,58 @@ R.curry2 = _curry2
 	@return {Function} The curried function.
 ]]
 local _curry3 = function(fn)
-	local f3 = function(...)
+	local f3
+	f3 = function(...)
 		local args = {...}
 		local a, b, c = unpack(args)
 		if #args == 0 then
 			return f3
 		elseif #args == 1 then
-			return _isPlaceholder(a) and f3 or _curry2(function (_b, _c)
-				return fn(a, _b, _c)
+			return _isPlaceholder(a) and f3 or _curry2(function (...)
+				return fn(a, ...)
 			end)
 		elseif #args == 2 then
-			return (_isPlaceholder(a) and _isPlaceholder(b)) and f3 or (_isPlaceholder(a) and _curry2(function (_a, _c)
-				return fn(_a, b, _c)
-			end) or (_isPlaceholder(b) and _curry2(function (_b, _c)
-				return fn(a, _b, _c)
-			end) or _curry1(function (_c)
-				return fn(a, b, _c)
+			return (_isPlaceholder(a) and _isPlaceholder(b)) and f3 or (_isPlaceholder(a) and _curry2(function (_a, ...)
+				return fn(_a, b, ...)
+			end) or (_isPlaceholder(b) and _curry2(function (...)
+				return fn(a, ...)
+			end) or _curry1(function (...)
+				return fn(a, b, ...)
 			end)))
 		else
 			if _isPlaceholder(a) and _isPlaceholder(b) and _isPlaceholder(c) then
 				return f3
 			elseif _isPlaceholder(a) and _isPlaceholder(b) then
-				return _curry2(function (_a, _b)
-					return fn(_a, _b, c)
+				return _curry2(function (_a, _b, ...)
+					return fn(_a, _b, c, ...)
 				end)
 			elseif _isPlaceholder(a) and _isPlaceholder(c) then
-				return  _curry2(function (_a, _c)
-					return fn(_a, b, _c)
+				return  _curry2(function (_a, ...)
+					return fn(_a, b, ...)
 				end)
 			elseif _isPlaceholder(b) and _isPlaceholder(c) then
-				return  _curry2(function (_b, _c)
-					return fn(a, _b, _c)
+				return  _curry2(function (...)
+					return fn(a, ...)
 				end)
 			elseif _isPlaceholder(a)  then
-				return _curry1(function (_a)
-					return fn(_a, b, c)
+				return _curry1(function (_a, ...)
+					return fn(_a, b, c, ...)
 				end)
 			elseif _isPlaceholder(b) then
-				return _curry1(function (_b)
-					return fn(a, _b, c)
+				return _curry1(function (_b, ...)
+					return fn(a, _b, c, ...)
 				end)
 			elseif _isPlaceholder(c) then
-				return _curry1(function (_c)				
-					return fn(a, b, _c)
+				return _curry1(function (...)				
+					return fn(a, b, ...)
 				end)
 			else
-				return fn(a, b, c)
+				return fn(...)
 			end
 		end
 	end
 	return f3
 end
-R.curry3 = _curry3
 
 --[[
 	Internal curryN function.
@@ -193,12 +207,17 @@ end
 	@private
 	@param {*} val The object or array.
 	@return {int} the extactly count that the given value contains
-	@example
-	
-	     _isArray(nil) --> false
-	     _isArray({}) --> true
+	@example	
+		_safe_size(nil) --> 0
+		_safe_size({}) --> 0
+		_safe_size({1,2,3}) --> 3
+		_safe_size({1,2,3,nil,5}) --> 4
 ]]
 local _safe_size = function(val)
+	if type(val) ~= "table" then
+		error("<lamda_error> _safe_size::can not get a non-table size " .. val)
+		return 0
+	end
 	local s = 0
 	for k, v in pairs(val) do
 		s = s + 1
@@ -206,35 +225,56 @@ local _safe_size = function(val)
 	return s
 end
 
---[[
-	Tests whether or not an object is an array.
-	
-	@private
-	@param {*} val The object to test.
-	@return {Boolean} `true` if `val` is an array, `false` otherwise.
-	@example
-	
-	     _isArray(nil) --> false
-	     _isArray({}) --> true
-]]
+local _isTable = function(val)
+	return type(val) == "table"
+end
+
 local _isArray = function(val)
-	return val ~= nil and type(val) == "table" and _safe_size(val) == #val
+	return type(val) == "table" and _safe_size(val) == #val
 end
 
 local _isString = function(val)
 	return type(val) == "string"
 end
 
-local _isMap = function(val)
-	return val ~= nil and type(val) == "table" and _safe_size(val) ~= #val
+local _isObject = function(val)
+	return type(val) == "table" and _safe_size(val) ~= #val
+end
+
+local _isBoolean = function(val)
+	return type(val) == "boolean"
+end
+
+local _isNan = function(val)
+	return val ~= val
+end
+
+local _isInf = function(val)
+	return val == __INF
 end
 
 local _isInteger = function(val)
-	return val ~= nil and type(val) == "number" and math.floor(val) == val
+	return val ~= nil and type(val) == "number" and not _isInf(val) and math.floor(val) == val
 end
 
-local _isFunction = function (x)
-    return type(x) == "function"
+local _isNumber = function(val)
+	return val ~= nil and type(val) == "number" and not _isInf(val) and not _isNan(val)
+end
+
+local _isFunction = function (val)
+    return type(val) == "function"
+end
+
+local _isUserData = function(val)
+	error("<lamda_error> _isUserData:: not implement")
+end
+
+local _get = function(idx, list)
+	if _isString(list) then
+		return string.sub(list, idx, idx)
+	elseif _isArray(list) then
+		return list[idx]
+	end
 end
 
 local _assign = function(obj, ...)
@@ -303,7 +343,7 @@ _clone = function(value, deep)
 	elseif type(value) == "string" or type(value) == "number" or type(value) == "nil" or type(value) == "boolean" then
 		return value
 	else
-		error("can not clone this value -> ", value)
+		error("<lamda_error> _clone:: can not clone this value -> " .. value)
 	end
 end
 
@@ -354,6 +394,9 @@ local _containsWith = function(pred, x, list)
 	return false
 end
 
+local function _ref_equal(a, b)
+	return a == b
+end
 
 local _equals
 _equals = function(a, b)
@@ -365,44 +408,34 @@ _equals = function(a, b)
 		return false
 	end
 
-	if (type(a) == "table") then
-		if _isArray(a) then
-
-			if not _isArray(b) then
-				return false
-			end
-
-			if #a ~= #b then
-				return false
-			end
-
-			for i,v in ipairs(a) do
-				if not _equals(v, b[i]) then
-					return false
-				end
-			end
-		else 
-			if _isArray(b) then
-				return false
-			end
-
-			for k,v in pairs(a) do
-				if not _equals(v, b[k]) then
-					return false
-				end
-			end
-
-			for k,v in pairs(b) do
-				if not _equals(v, a[k]) then
-					return false
-				end
-			end
-		end
-
-		return true
+	if not _isTable(a) then
+		return false
 	end
 
-	return false
+	if _isArray(a) then
+		if not _isArray(b) then return false end
+		if #a ~= #b then return false end
+		for i,v in ipairs(a) do
+			if not _equals(v, b[i]) then
+				return false
+			end
+		end
+		return true
+	elseif _isArray(b) then
+		return false
+	else
+		for k,v in pairs(a) do
+			if not _equals(v, b[k]) then
+				return false
+			end
+		end
+		for k,v in pairs(b) do
+			if not _equals(v, a[k]) then
+				return false
+			end
+		end
+		return true
+	end
 end
 
 local _filter = function(fn, list)
@@ -465,6 +498,29 @@ end
 -- ================ Util Functions ================
 -- ================================================ 
 --[[
+	Returns the second argument if it is not `nil` or `nan` or `inf`
+	otherwise the first argument is returned.
+	
+	@func
+	@category Util
+	@sig a -> b -> a | b
+	@param {a} default The default value.
+	@param {b} val `val` will be returned instead of `default` unless `val` is `null`, `nil` or `NaN`.
+	@return {*} The second value if it is not `null`, `nil` or `NaN`, otherwise the default value
+	@example	
+		R.defaultTo(42, nil) --> 42
+		R.defaultTo(42, 0/0) --> 42
+		R.defaultTo(42, 1/0) --> 42
+		R.defaultTo(42, 100) --> 100
+
+	@not curried
+		nil value will be tested.
+]]
+R.defaultTo = function(d, v)
+	return R.isNull(v) and d or v
+end
+
+--[[
     Returns the first argument.
 	
 	@func
@@ -486,6 +542,538 @@ R.first = function(...)
 	else
 		return nil
 	end
+end
+
+--[[
+	Returns the empty value of its argument's type. Lamda defines the empty
+	value of Table(`{}`), String (`''`), and Arguments.	
+	
+	@func
+	@memberOf R
+	@category Util
+	@sig a -> a
+	@param {*} x
+	@return {*}
+	@example	
+		R.empty(3) --> 0
+		R.empty(function() end)	--> nil
+		R.empty({1, 2, 3}) --> {}
+		R.empty('unicorns') --> ''
+		R.empty({x = 1, y = 2}) --> {}
+		R.empty(true) --> false
+]]
+R.empty = _curry1(function(x)
+	if _isTable(x) then
+		return {}
+	elseif _isString(x) then
+		return ""
+	elseif _isNumber(x) then
+		return 0
+	elseif _isBoolean(x) then
+		return false
+	else
+		return nil
+	end
+end)
+
+--[[
+	Returns `true` if its arguments are equivalent, `false` otherwise. Handles
+	cyclical data structures.
+	
+	@func
+	@category Util
+	@sig a -> b -> Boolean
+	@param {*} a
+	@param {*} b
+	@return {Boolean}
+	@example	
+		R.equals(1, 1) --> true
+		R.equals(1, '1') --> false
+		R.equals({1, 2, 3}, {1, 2, 3}) --> true
+
+		local a = {} 
+		a.v = a
+		local b = {} 
+		b.v = b
+		R.equals(a, b) --> stack error , don't do this!
+]]
+R.equals = _curry2(_equals)
+--[[
+	@alias equals
+	@not curried
+]]
+R.safeEquals = _equals
+
+--[[
+	Takes a function and two values in its domain and returns `true` if the
+	values map to the same value in the codomain `false` otherwise.
+	
+	@func
+	@category Util
+	@sig (a -> b) -> a -> a -> Boolean
+	@param {Function} f
+	@param {*} x
+	@param {*} y
+	@return {Boolean}
+	@example
+		R.eqBy(math.abs, 5, -5) --> true
+]]
+R.eqBy = _curry3(function(f, x, y)
+	return R.equals(f(x), f(y))
+end)
+
+--[[
+	Reports whether two objects have the same value, in [`R.equals`](#equals)
+	terms, for the specified property. Useful as a curried predicate.
+	
+	@func
+	@category Util
+	@category Object
+	@sig k -> {k: v} -> {k: v} -> Boolean
+	@param {String} prop The name of the property to compare
+	@param {Object} obj1
+	@param {Object} obj2
+	@return {Boolean}
+	
+	@example
+		local o1 = { a = 1, b = 2, c = 3, d = 4 }
+		local o2 = { a = 10, b = 20, c = 3, d = 40 }
+		R.eqProps('a', o1, o2) --> false
+		R.eqProps('c', o1, o2) --> true
+]]
+R.eqProps = _curry3(function(prop, obj1, obj2)
+	return R.equals(obj1[prop], obj2[prop])
+end)
+
+--[[
+	See if `val` is an instance of the supplied constructor. 
+	this function cannot detect nil value (because it's curried)
+	
+	@func
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@example
+		R.is(R.TABLE, {}) --> true
+		R.is(R.NUMBER, 1) --> true
+		R.is(R.OBJECT, 1) --> false
+		R.is(R.STRING, 's') --> true     
+		R.is(R.ARRAY, 's') --> false
+		R.is(R.NUMBER, {}) --> false
+]]
+R.is = _curry2(function(Type, val)
+	if Type == R.TABLE then
+		return _isTable(val)
+	elseif Type == R.ARRAY then
+		return _isArray(val)
+	elseif Type == R.OBJECT then
+		return _isObject(val)
+	elseif Type == R.STRING then
+		return _isString(val)
+	elseif Type == R.INTEGER then
+		return _isInteger(val)
+	elseif Type == R.NUMBER then
+		return _isNumber(val)
+	elseif Type == R.FUNCTION then 
+		return _isFunction(val)
+	elseif Type == R.USERDATA then
+		return _isUserData(val)
+	elseif Type == R.NAN then
+		return _isNan(val)
+	elseif Type == R.INF then
+		return _isInf(val)
+	else
+		error("<lamda_error> is:: Invalid Type To Check ===> " .. Type)
+	end
+end)
+
+--[[
+	See if `val` is an integer
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isInteger = _curry1(_isInteger)
+
+--[[
+	See if `val` is an integer. 
+	if val is nil, return false.
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.isInteger
+	@not curried
+]]
+R.isSafeInteger = _isInteger
+
+--[[
+	See if `val` is a number
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isNumber = _curry1(_isNumber)
+
+--[[
+	See if `val` is a number
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.isNumber		
+]]
+R.isSafeNumber = _isNumber
+
+--[[
+	See if `val` is a string
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isString = _curry1(_isString)
+
+--[[
+	See if `val` is a string
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeString = _isString
+
+--[[
+	See if `val` is a function
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isFunction = _curry1(_isFunction)
+
+--[[
+	See if `val` is a function
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeFunction = _isFunction
+
+--[[
+	See if `val` is a user data
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isUserData = _curry1(_isUserData)
+
+--[[
+	See if `val` is a user data
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeUserData = _isUserData
+
+--[[
+	See if `val` is a table
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isTable = _curry1(_isTable)
+
+--[[
+	See if `val` is a table
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeTable = _isTable
+
+--[[
+	See if `val` is an array
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isArray = _curry1(_isArray)
+
+--[[
+	See if `val` is an array
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeArray = _isArray
+
+--[[
+	See if `val` is an object
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isObject = _curry1(_isObject)
+
+--[[
+	See if `val` is an object
+	if val is nil, return false.
+
+	@func	
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeObject = _isObject
+
+--[[
+	See if `val` is nan
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isNan = _curry1(_isNan)
+
+--[[
+	See if `val` is nan
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeNan = _isNan
+
+--[[
+	See if `val` is inf
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isInf = _curry1(_isInf)
+
+--[[
+	See if `val` is inf
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeInf = _isInf
+
+--[[
+	See if `val` is boolean
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isBoolean = _curry1(_isBoolean)
+
+--[[
+	See if `val` is boolean
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeBoolean = _isBoolean
+
+--[[
+	See if `val` is empty value like `nil` `inf` `nan`
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+	@not curried
+]]
+R.isNull = function(val)
+	return R.isNil(val) or _isNan(val) or _isInf(val)
+end
+
+--[[
+	Returns `true` if the given value is its type's empty value `false`
+	otherwise.
+	
+	@func
+	@category Util
+	@sig a -> Boolean
+	@param {*} x
+	@return {Boolean}
+	@example
+		R.isEmpty({1, 2, 3})   --> false
+		R.isEmpty({})          --> true
+		R.isEmpty('')          --> true
+		R.isEmpty(nil)        --> true
+		R.isEmpty({})          --> true
+		R.isEmpty({length = 0}) --> false
+	@not curried
+]]
+R.isEmpty = function(x)
+	if R.isNull(x) then 
+		return true
+	elseif type(x) == "string" then 
+		return x == ""
+	elseif type(x) == "table" then
+		return next(x) == nil
+	else
+		return false
+	end
+end
+
+--[[
+	Checks if the input value is `nil`.
+	
+	@func
+	@category Util
+	@sig * -> Boolean
+	@param {*} x The value to test.
+	@return {Boolean} `true` if `x` is `nil` or `null`, otherwise `false`.
+	@example
+		R.isNil(nil) --> true
+		R.isNil(0) --> false
+		R.isNil(1/0) --> false
+		R.isNil(0/0) --> false
+		R.isNil([]) --> false
+	@not curried
+]]
+R.isNil = function(x)
+	return x == nil
 end
 
 --[[
@@ -820,6 +1408,81 @@ R.both = _curry2(function(f, g)
 end)
 
 --[[
+	Makes a descending comparator function out of a function that returns a value
+	that can be compared with `<` and `>`.
+	
+	@func
+	@category Functional
+	@sig Ord b => (a -> b) -> a -> a -> Number
+	@param {Function} fn A function of arity one that returns a value that can be compared
+	@param {*} a The first item to be compared.
+	@param {*} b The second item to be compared.
+	@return {Number} `-1` if fn(a) > fn(b), `1` if fn(b) > fn(a), otherwise `0`
+	@see R.ascend
+	@example
+		local byAge = R.descend(R.prop('age'))
+		local people = {
+			{ name = 'Emma', age = 70 },
+			{ name = 'Peter', age = 78 },
+			{ name = 'Mikhail', age = 62 },
+		}
+		local peopleByYoungestFirst = R.sort(byAge, people) --> {{ name: 'Peter', age: 78 }, { name: 'Emma', age: 70 }, { name: 'Mikhail', age: 62 }}
+]]
+R.descend = _curry3(function(fn, a, b)
+	local aa = fn(a)
+	local bb = fn(b)
+	return aa > bb
+end)
+
+--[[
+	A function wrapping calls to the two functions in an `or` operation,
+	returning the result of the first function if it is truth-y and the result
+	of the second function otherwise. Note that this is short-circuited,
+	meaning that the second function will not be invoked if the first returns a
+	truth-y value.    
+	
+	@func
+	@category Functional
+	@sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
+	@param {Function} f a predicate
+	@param {Function} g another predicate
+	@return {Function} a function that applies its arguments to `f` and `g` and `or`s their outputs together.
+	@see R.or_
+	@example	
+		local gt10 = function(x) return x > 10 end
+		local even = function(x) return x % 2 == 0 end
+		local f = R.either(gt10, even)
+		f(101) --> true
+		f(8) --> true
+]]
+R.either = _curry2(function(f, g)
+	return  function (...)
+		return f(...) or g(...)
+	end
+end)
+
+--[[
+	Returns a new function much like the supplied one, except that the first two
+	arguments' order is reversed.
+	
+	@func
+	@category Functional
+	@sig (a -> b -> c -> ... -> z) -> (b -> a -> c -> ... -> z)
+	@param {Function} fn The function to invoke with its first two parameters reversed.
+	@return {*} The result of invoking `fn` with its first two parameters' order reversed.
+	@example
+		local mergeThree = function(a, b, c) return a .. b .. c end	
+		mergeThree('1','2','3') --> "123"	
+		R.flip(mergeThree)('1','2','3') --> "213"
+	@symb R.flip(f)(a, b, ...) = f(b, a, ...)
+]]
+R.flip = _curry1(function(fn)
+	return _curry2(function (a, b, ...)		
+		return fn(b, a, ...)
+	end)
+end)
+
+--[[
 	Wraps a function of any arity (including nullary) in a function that accepts
 	exactly `n` parameters. Any extraneous parameters will not be passed to the
 	supplied function.
@@ -895,7 +1558,7 @@ R.nAry = _curry2(function(n, fn)
 			return fn(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
 		end
 	else
-		error('First argument to nAry must be a non-negative integer no greater than ten')
+		error('<lamda_error> nAry:: First argument to nAry must be a non-negative integer no greater than ten')
 	end
 end)
 
@@ -928,9 +1591,216 @@ R.unary = _curry1(function(fn)
 	return R.nAry(1, fn)
 end)
 
+--[[
+	Returns the result of calling its first argument with the remaining
+	arguments. This is occasionally useful as a converging function for
+	[`R.converge`](#converge): the first branch can produce a function while the
+	remaining branches produce values to be passed to that function as its
+	arguments.
+	
+	@func
+	@category Functional
+	@sig (*... -> a),*... -> a
+	@param {Function} fn The function to apply to the remaining arguments.
+	@param {...*} args Any number of positional arguments.
+	@return {*}
+	@see R.apply
+	@example	
+		R.call(R.add, 1, 2) --> 3
+
+	@symb R.call(f, a, b) = f(a, b)
+]]
+R.call = function(fn, ...)
+	return fn(...)
+end
+
+--[[
+	Returns a function, `fn`, which encapsulates `if/else, if/else, ...` logic.
+	`R.cond` takes a list of predicate pairs. All of the arguments
+	to `fn` are applied to each of the predicates in turn until one returns a
+	"truthy" value, at which point `fn` returns the result of applying its
+	arguments to the corresponding transformer. If none of the predicates
+	matches, `fn` returns nil.
+	
+	@func
+	@category Functional
+	@sig [ [(*... -> Boolean),(*... -> *)] ] -> (*... -> *)
+	@param {Array} pairs A list of [predicate, transformer]
+	@return {Function}
+	@example	
+		local fn = R.cond({
+			{R.equals(0),   R.always('water freezes at 0°C')},
+			{R.equals(100), R.always('water boils at 100°C')},
+			{R.T,           function(temp) return 'nothing special happens at ' .. temp .. '°C' end}
+		})
+		fn(0) --> 'water freezes at 0°C'
+		fn(50) --> 'nothing special happens at 50°C'
+		fn(100) --> 'water boils at 100°C'
+]]
+R.cond = _curry1(function(p)
+	return function (...)
+		for k,v in pairs(p) do
+			if v[1](...) then
+				return v[2](...)
+			end
+		end
+	end
+end)
+
+--[[
+	Makes a comparator function out of a function that reports whether the first
+	element is less than the second.
+	
+	@func
+	@category Functional
+	@sig (a, b -> Boolean) -> (a, b -> Number)
+	@param {Function} pred A predicate function of arity two which will return `true` if the first argument
+	is less than the second, `false` otherwise
+	@return {Function} A Function :: a -> b -> Int that returns `-1` if a < b, `1` if b < a, otherwise `0`
+	@example	
+		local byAge = R.comparator(function(a, b) return a.age < b.age end)
+		local people = {
+			-- ...
+		}
+		local peopleByIncreasingAge = R.sort(byAge, people)
+	@see R.ascend, R.desend
+]]
+R.comparator = _curry1(function(pred)
+	return function (a, b)
+		return pred(a, b)
+	end
+end)
+
+--[[
+	Takes a function `f` and returns a function `g` such that if called with the same arguments
+	when `f` returns a "truthy" value, `g` returns `false` and when `f` returns a "falsy" value `g` returns `true`.
+		
+	@func
+	@category Functional
+	@sig (*... -> *) -> (*... -> Boolean)
+	@param {Function} f
+	@return {Function}
+	@see R.not
+	@example	
+		local isNotNil = R.complement(R.isNil)
+		R.isNil(nil) --> true
+		isNotNil(nil) --> false
+		R.isNil(7) --> false
+		isNotNil(7) --> true
+]]
+R.complement = _curry1(_complement)
+
+--[[
+	Accepts a converging function and a list of branching functions and returns
+	a new function. When invoked, this new function is applied to some
+	arguments, each branching function is applied to those same arguments. The
+	results of each branching function are passed as arguments to the converging
+	function to produce the return value.
+	
+	@func
+	@category Functional
+	@sig (x1 -> x2 -> ... -> z) -> [(a -> b -> ... -> x1), (a -> b -> ... -> x2), ...] -> (a -> b -> ... -> z)
+	@param {Function} after A function. `after` will be invoked with the return values of
+		`fn1` and `fn2` as its arguments.
+	@param {Array} functions A list of functions.
+	@return {Function} A new function.
+	@see R.useWith
+	@example	
+		local average = R.converge(R.divide, {R.sum, R.length})
+		average({1, 2, 3, 4, 5, 6, 7}) --> 4
+	
+		local strangeConcat = R.converge(R.concat, {R.toUpper, R.toLower})
+		strangeConcat("Yodel") --> "YODELyodel"
+	
+	@symb R.converge(f, {g, h})(a, b) = f(g(a, b), h(a, b))
+]]
+R.converge = _curry2(function(after, fns)
+	return function (...)
+		local args = {...}
+		return after(unpack(R.map(function (fn)
+			return fn(unpack(args))
+		end, fns)))
+	end
+end)
+
+--[[
+	Returns a curried equivalent of the provided function, with the specified
+	arity. The curried function has two unusual capabilities. First, its
+	arguments needn't be provided one at a time. If `g` is `R.curryN(3, f)`, the
+	following are equivalent:
+	
+	- `g(1)(2)(3)`
+	- `g(1)(2, 3)`
+	- `g(1, 2)(3)`
+	- `g(1, 2, 3)`
+	
+	Secondly, the special placeholder value [`R.__`](#__) may be used to specify
+	"gaps", allowing partial application of any combination of arguments,
+	regardless of their positions. If `g` is as above and `_` is [`R.__`](#__),
+	the following are equivalent:
+	
+	- `g(1, 2, 3)`
+	- `g(_, 2, 3)(1)`
+	- `g(_, _, 3)(1)(2)`
+	- `g(_, _, 3)(1, 2)`
+	- `g(_, 2)(1)(3)`
+	- `g(_, 2)(1, 3)`
+	- `g(_, 2)(_, 3)(1)`
+	
+	@func
+	@category Functional
+	@sig Number -> (* -> a) -> (* -> a)
+	@param {Number} length The arity for the returned function.
+	@param {Function} fn The function to curry.
+	@return {Function} A new, curried function.
+	@see R.curry
+	@example	
+		local sumArgs = function(...) return R.sum({...}) end
+	
+		local curriedAddFourNumbers = R.curryN(4, sumArgs)
+		local f = curriedAddFourNumbers(1, 2)
+		local g = f(3)
+		g(4) --> 10
+]]
+R.curryN = _curry2(function(length, fn)
+	if length == 1 then
+		return _curry1(fn)
+	end
+	return _curryN(length, {}, fn)
+end)
+--[[
+	@special curryN
+]]
+R.curry1 = _curry1
+--[[
+	@special curryN
+]]
+R.curry2 = _curry2
+--[[
+	@special curryN
+]]
+R.curry3 = _curry3
+
 -- ================================================
 -- ================ Math Functions ================
 -- ================================================
+--[[
+	Get the absolute value.
+	
+	@func
+	@since v0.2.0
+	@category Math
+	@sig number -> number
+	@param {number} a
+	@return {number}
+	@example
+		R.abs(-5)       --> 5
+]]
+R.abs = _curry1(function (a)
+	if _isNumber(a) then return math.abs(a) end
+	error("<lamda_error> abs:: can not invoke abs method on non-number value.")
+end)
+
 --[[
 	Adds two values.
 	
@@ -982,6 +1852,69 @@ end)
 	@alias R.subtract
 ]]
 R.minus = R.subtract
+
+--[[
+	Restricts a number to be within a range.	
+	Also works for other ordered types such as strings
+	
+	@func
+	@category Math
+	@sig Ord a => a -> a -> a -> a
+	@param {Number} minimum The lower limit of the clamp (inclusive)
+	@param {Number} maximum The upper limit of the clamp (inclusive)
+	@param {Number} value Value to be clamped
+	@return {Number} Returns `minimum` when `val < minimum`, `maximum` when `val > maximum`, returns `val` otherwise
+	@example	
+		R.clamp(1, 10, -5) --> 1
+		R.clamp(1, 10, 15) --> 10
+		R.clamp(1, 10, 4)  --> 4
+]]
+R.clamp = _curry3(function(min, max, value)
+	if min > max then
+		min, max = max, min
+	end
+	return value < min and min or (value > max and max or value)
+end)
+
+--[[
+	Decrements its argument.
+	
+	@func
+	@category Math
+	@sig Number -> Number
+	@param {Number} n
+	@return {Number} n - 1
+	@see R.inc
+	@example	
+		R.dec(42) --> 41
+]]
+R.dec = R.add(-1)
+
+--[[
+	Divides two numbers. Equivalent to `a / b`.
+	
+	@func
+	@category Math
+	@sig Number -> Number -> Number
+	@param {Number} a The first value.
+	@param {Number} b The second value.
+	@return {Number} The result of `a / b`.
+	@see R.multiply
+	@example
+		R.divide(71, 100) --> 0.71
+	
+		local half = R.divide(R.__, 2)
+		half(42) --> 21
+	
+		local reciprocal = R.divide(1)
+		reciprocal(4)   --> 0.25
+]]
+R.divide = _curry2(function(a, b)
+	if b == 0 then
+		error('<lamda_error> divide:: divide by zero')
+	end
+	return a / b
+end)
 
 -- ================================================
 -- ================ Array Functions ===============
@@ -1089,7 +2022,7 @@ end)
 	@param {Number} n The size of the tuples to create
 	@param {Array} list The list to split into `n`-length tuples
 	@return {Array} The resulting list of `n`-length tuples
-	@see R.transduce
+	
 	@example
 		R.aperture(2, {1, 2, 3, 4, 5}) --> {{1, 2}, {2, 3}, {3, 4}, {4, 5}}
 		R.aperture(3, {1, 2, 3, 4, 5}) --> {{1, 2, 3}, {2, 3, 4}, {3, 4, 5}}
@@ -1102,7 +2035,7 @@ R.aperture = _curry2(function(n, list)
 	local acc = {}
 	if n < 0 then return {} end
 	while idx <= limit do
-		acc[idx] = R.slice(idx, idx + n - 1, list)
+		acc[idx] = R.slice(idx, idx + n, list)
 		idx = idx + 1
 	end
 	return acc
@@ -1133,6 +2066,505 @@ end)
 ]]
 R.push = R.append
 
+--[[
+	`chain` maps a function over a list and concatenates the results. `chain`
+	is also known as `flatMap` in some libraries.
+	If second param is function, chain(f, g)(x) equals f(g(x), x).
+		
+	@func
+	@category Array
+	@sig Chain m => (a -> m b) -> m a -> m b
+	@param {Function} fn The function to map with
+	@param {Array} list The list to map over
+	@return {Array} The result of flat-mapping `list` with `fn`
+	@example	
+		local duplicate = function(n) return {n, n} end
+		R.chain(duplicate, {1, 2, 3}) --> {1, 1, 2, 2, 3, 3}     
+		R.chain(R.append, R.head)({1, 2, 3}) --> {1, 2, 3, 1}
+	@symb Func g => R.chain(f, g)(x) = f(g(x), x)
+]]
+R.chain = _curry2(function(fn, monad)
+	if _isFunction(monad) then
+		return function (x)
+			return fn(monad(x))(x)
+		end
+	end
+	return _makeFlat(false)(R.map(fn, monad))
+end)
+
+--[[
+	Returns the result of concatenating the given lists or strings.     
+	Note: `R.concat` expects both arguments to be of the same type as array or string
+	
+	@func
+	@category Array
+	@sig [a] -> [a] -> [a]
+	@sig String -> String -> String
+	@param {Array|String} firstList The first list
+	@param {Array|String} secondList The second list
+	@return {Array|String} A list consisting of the elements of `firstList` followed by the elements of
+	`secondList`.
+	
+	@example	
+		R.concat('ABC', 'DEF') --> 'ABCDEF'
+		R.concat([4, 5, 6], [1, 2, 3]) --> [4, 5, 6, 1, 2, 3]
+		R.concat([], []) --> []
+]]
+R.concat = _curry2(function(a, b)
+	if _isArray(a) then
+		if _isArray(b) then
+			return _concat(a, b)
+		else
+			error("<lamda_error> concat:: ".. toString(b) .. ' is not an array')
+		end
+	end
+	if _isString(a) then
+		return a..b
+	end
+end)
+
+--[[
+	Returns `true` if the specified value is equal, in [`R.equals`](#equals)
+	terms, to at least one element of the given list `false` otherwise.
+	
+	@func
+	@category Array
+	@sig a -> [a] -> Boolean
+	@param {Object} a The item to compare against.
+	@param {Array} list The array to consider.
+	@return {Boolean} `true` if an equivalent item is in the list, `false` otherwise.
+	@see R.any
+	@example	
+		R.contains(3, {1, 2, 3}) --> true
+		R.contains(4, {1, 2, 3}) --> false
+		R.contains({ name = 'Fred' }, {{ name = 'Fred' }}) --> true
+		R.contains({42}, {{42}}) --> true
+]]
+R.contains = _curry2(_contains)
+--[[
+	@alias contains
+]]
+R.includes = R.contains
+
+--[[
+	Finds the set (i.e. no duplicates) of all elements in the first list not
+	contained in the second list. Objects and Arrays are compared in terms of
+	value equality, not reference equality.
+	
+	@func
+	@category Array
+	@sig [*] -> [*] -> [*]
+	@param {Array} list1 The first list.
+	@param {Array} list2 The second list.
+	@return {Array} The elements in `list1` that are not in `list2`.
+	@see R.differenceWith, R.symmetricDifference, R.symmetricDifferenceWith, R.without
+	@example
+		R.difference({1,2,3,4}, {7,6,5,4,3}) --> {1,2}
+		R.difference({7,6,5,4,3}, {1,2,3,4}) --> {7,6,5}
+		R.difference({{a = 1}, {b = 2}}, {{a = 1}, {c = 3}}) --> {{b = 2}}
+]]
+R.difference = _curry2(function(first, second)
+	local out = {}
+	local idx = 1
+	local firstLen = #first
+	while idx <= firstLen do
+		if (not _contains(first[idx], second)) and (not _contains(first[idx], out)) then
+			out[#out + 1] = first[idx]
+		end
+		idx = idx + 1
+	end
+	return out
+end)
+
+--[[
+	Finds the set (i.e. no duplicates) of all elements in the first list not
+	contained in the second list. Duplication is determined according to the
+	value returned by applying the supplied predicate to two list elements.
+	
+	@func
+	@category Array
+	@sig ((a, a) -> Boolean) -> [a] -> [a] -> [a]
+	@param {Function} pred A predicate used to test whether two items are equal.
+	@param {Array} list1 The first list.
+	@param {Array} list2 The second list.
+	@return {Array} The elements in `list1` that are not in `list2`.
+	@see R.difference, R.symmetricDifference, R.symmetricDifferenceWith
+	@example
+		local cmp = function(x, y) return x.a == y.a end
+		local l1 = {{a = 1}, {a = 2}, {a = 3}}
+		local l2 = {{a = 3}, {a = 4}}
+		R.differenceWith(cmp, l1, l2) --> {{a = 1}, {a = 2}}
+]]
+R.differenceWith = _curry3(function(pred, first, second)
+	local out = {}
+	local idx = 1
+	local firstLen = #first
+	while idx <= firstLen do
+		if (not _containsWith(pred, first[idx], second)) and (not _containsWith(pred, first[idx], out)) then
+			out[#out + 1] = first[idx]
+		end
+		idx = idx + 1
+	end
+	return out
+end)
+
+--[[
+	Returns all but the first `n` elements of the given list, string, or
+	transducer/transformer (or object with a `drop` method).
+		
+	@func
+	@category Array
+	@sig Number -> [a] -> [a]
+	@sig Number -> String -> String
+	@param {Number} n
+	@param {*} list
+	@return {*} A copy of list without the first `n` elements
+	@see R.take, R.transduce, R.dropLast, R.dropWhile
+	@example
+		R.drop(1, {'foo', 'bar', 'baz'}) --> {'bar', 'baz'}
+		R.drop(2, {'foo', 'bar', 'baz'}) --> {'baz'}
+		R.drop(3, {'foo', 'bar', 'baz'}) --> {}
+		R.drop(4, {'foo', 'bar', 'baz'}) --> {}
+		R.drop(3, 'ramda')               --> 'da'
+]]
+R.drop = _curry2(function(n, xs)
+	return R.slice(math.max(1, n) + 1, 0, xs)
+end)
+
+--[[
+	Returns a list containing all but the last `n` elements of the given `list`.
+	
+	@func
+	@category Array
+	@sig Number -> [a] -> [a]
+	@sig Number -> String -> String
+	@param {Number} n The number of elements of `list` to skip.
+	@param {Array} list The list of elements to consider.
+	@return {Array} A copy of the list with only the first `list.length - n` elements
+	@see R.takeLast, R.drop, R.dropWhile, R.dropLastWhile
+	@example	
+		R.dropLast(1, {'foo', 'bar', 'baz'}) --> {'foo', 'bar'}
+		R.dropLast(2, {'foo', 'bar', 'baz'}) --> {'foo'}
+		R.dropLast(3, {'foo', 'bar', 'baz'}) --> {}
+		R.dropLast(4, {'foo', 'bar', 'baz'}) --> {}
+		R.dropLast(3, 'lamda')               --> 'la'
+]]
+R.dropLast = _curry2(function(n, xs)
+    return R.take(n < R.size(xs) and R.size(xs) - n or 0, xs)
+end)
+
+--[[
+	Returns a new list excluding all the tailing elements of a given list which
+	satisfy the supplied predicate function. It passes each value from the right
+	to the supplied predicate function, skipping elements until the predicate
+	function returns a `falsy` value. The predicate function is applied to one argument:
+	(value)*.
+	
+	@func
+	@category Array
+	@sig (a -> Boolean) -> [a] -> [a]
+	@param {Function} predicate The function to be called on each element
+	@param {Array} list The collection to iterate over.
+	@return {Array} A new array without any trailing elements that return `falsy` values from the `predicate`.
+	@see R.takeLastWhile, R.addIndex, R.drop, R.dropWhile
+	@example	
+		R.dropLastWhile(R.gte(3), {1, 2, 3, 4, 3, 2, 1}) --> {1, 2, 3, 4}
+]]
+R.dropLastWhile = _curry2(function(pred, list)
+	local idx = R.size(list)
+	while idx > 0 and pred(_get(idx, list)) do
+		idx = idx - 1
+	end
+	if (idx == 0) then return R.empty(list) end
+	return R.slice(1, idx + 1, list)
+end)
+
+--[[
+	Returns a new list excluding the leading elements of a given list which
+	satisfy the supplied predicate function. It passes each value to the supplied
+	predicate function, skipping elements while the predicate function returns
+	`true`. The predicate function is applied to one argument: *(value)*.    
+	
+	@func
+	@category Array
+	@sig (a -> Boolean) -> [a] -> [a]
+	@param {Function} fn The function called per iteration.
+	@param {Array} list The collection to iterate over.
+	@return {Array} A new array.
+	@see R.takeWhile, R.transduce, R.addIndex
+	@example	
+		R.dropWhile(R.gte(2), {1, 2, 3, 4, 3, 2, 1}) --> {3, 4, 3, 2, 1}
+]]
+R.dropWhile = _curry2(function(pred, list)
+	local idx = 1
+	local len = R.size(list)
+	while idx <= len and pred(_get(idx, list)) do
+		idx = idx + 1
+	end
+	return R.slice(idx, len + 1, list)
+end)
+
+--[[
+	Takes a predicate and an array, and returns a new array of the
+	same type containing the members of the given array which satisfy the
+	given predicate. 
+		
+	@func
+	@category Array
+	@category Object
+	@sig Filterable f => (a -> Boolean) -> f a -> f a
+	@param {Function} pred
+	@param {Array} filterable
+	@return {Array} Filterable
+	@see R.reject, R.transduce, R.addIndex
+	@example	
+		local isEven = function(n) return n % 2 == 0 end	
+		R.filter(isEven, {1, 2, 3, 4}) --> {2, 4}	
+		R.filter(isEven, {a = 1, b = 2, c = 3, d = 4}) --> {b = 2, d = 4}
+]]
+R.filter = _curry2(function(pred, filterable)
+	if _isObject(filterable) then
+		local result = {}
+		for k,v in pairs(filterable) do
+			if pred(v) then
+				result[k] = v
+			end
+		end
+		return result
+	else
+		return _filter(pred, filterable)
+	end
+end)
+
+--[[
+	Returns the first element of the list which matches the predicate, or
+	`nil` if no element matches.
+	if `predicate` is not a function, use R.equals to check it's value
+		
+	@func
+	@category Array
+	@sig (a -> Boolean) -> [a] -> a | nil
+	@param {Function} fn The predicate function used to determine if the element is the
+		desired one.
+	@param {Array} list The array to consider.
+	@return {Object} The element found, or `nil`.	
+	@example
+		local xs = {{a = 1}, {a = 2}, {a = 3}}
+		R.find(R.propEq('a', 2))(xs) --> {a = 2}
+		R.find(R.propEq('a', 4))(xs) --> nil
+]]
+R.find = _curry2(function(fn, list)
+	local idx = 1
+	local len = #list
+	while idx <= len do
+		if _isFunction(fn) then
+			if fn(list[idx]) then
+				return list[idx]
+			end
+		elseif R.equals(fn, list[idx]) then
+			return list[idx]
+		end
+		idx = idx + 1
+	end
+end)
+
+--[[
+	Returns the index of the first element of the list which matches the
+	predicate, or `-1` if no element matches.
+		
+	@func
+	@category Array
+	@sig (a -> Boolean) -> [a] -> Number
+	@param {Function} fn The predicate function used to determine if the element is the
+	desired one.
+	@param {Array} list The array to consider.
+	@return {Number} The index of the element found, or `-1`.
+	@example
+		local xs = {{a = 1}, {a = 2}, {a = 3}}
+		R.findIndex(R.propEq('a', 2))(xs) --> 2
+		R.findIndex(R.propEq('a', 4))(xs) --> -1
+]]
+R.findIndex = _curry2(function(fn, list)
+	local idx = 1
+	local len = #list
+	while idx <= len do
+		if _isFunction(fn) then
+			if fn(list[idx]) then
+				return idx
+			end
+		elseif R.equals(fn, list[idx]) then
+			return idx
+		end
+		idx = idx + 1
+	end
+	return -1
+end)
+
+--[[
+	Returns the last element of the list which matches the predicate, or
+	`nil` if no element matches.
+		
+	@func
+	@category Array
+	@sig (a -> Boolean) -> [a] -> a | nil
+	@param {Function} fn The predicate function used to determine if the element is the
+	desired one.
+	@param {Array} list The array to consider.
+	@return {Object} The element found, or `nil`.
+	
+	@example
+		local xs = {{a = 1, b = 0}, {a = 1, b = 1}}
+		R.findLast(R.propEq('a', 1))(xs) --> {a = 1, b = 1}
+		R.findLast(R.propEq('a', 4))(xs) --> nil
+]]
+R.findLast = _curry2(function(fn, list)
+	local idx = #list
+	while idx > 0 do
+		if _isFunction(fn) then
+			if fn(list[idx]) then
+				return list[idx]
+			end
+		elseif R.equals(fn, list[idx]) then
+			return list[idx]
+		end
+		idx = idx - 1
+	end
+end)
+
+
+--[[
+	Returns the index of the last element of the list which matches the
+	predicate, or `-1` if no element matches.
+	
+	@func
+	@category Array
+	@sig (a -> Boolean) -> [a] -> Number
+	@param {Function} fn The predicate function used to determine if the element is the
+	desired one.
+	@param {Array} list The array to consider.
+	@return {Number} The index of the element found, or `-1`.
+	@example
+		local xs = {{a = 1, b = 0}, {a = 1, b = 1}}
+		R.findLastIndex(R.propEq('a', 1))(xs) --> 1
+		R.findLastIndex(R.propEq('a', 4))(xs) --> -1
+]]
+R.findLastIndex = _curry2(function(fn, list)
+	local idx = #list
+	while idx > 0 do
+		if _isFunction(fn) then
+			if fn(list[idx]) then
+				return idx
+			end
+		elseif R.equals(fn, list[idx]) then
+			return idx
+		end
+		idx = idx - 1
+	end
+	return -1
+end)
+
+--[[
+	Returns a new list by pulling every item out of it (and all its sub-arrays)
+	and putting them in a new array, depth-first.
+	
+	@func
+	@category Array
+	@sig [a] -> [b]
+	@param {Array} list The array to consider.
+	@return {Array} The flattened list.
+	@see R.unnest
+	@example	
+		R.flatten({1, 2, {3, 4}, 5, {6, {7, 8, {9, {10, 11}, 12}}}})
+		--> {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+]]
+R.flatten = _curry1(_makeFlat(true))
+
+--[[
+	Returns the elements of the given list or string from `fromIndex` (inclusive) to `toIndex` (exclusive).	
+	if `fromIndex` is zero then it will set to 1(from the first element)
+	if `toIndex` is zero then it will set to length + 1(include the last element)
+	negative number is the index from right side
+	-1 means the last element, etc..
+	
+	@func
+	@category Array
+	@sig Number -> Number -> [a] -> [a]
+	@sig Number -> Number -> String -> String
+	@param {Number} fromIndex The start index (inclusive).
+	@param {Number} toIndex The end index (exclusive).
+	@param {*} list
+	@return {*}
+	@example
+		R.slice(2, 3, {'a', 'b', 'c', 'd'})        --> {'b'}
+		R.slice(1, -2, {'a', 'b', 'c', 'd'})       --> {'a', 'b'}
+		R.slice(-3, -1, {'a', 'b', 'c', 'd'})      --> {'b', 'c'}
+		R.slice(1, 3, 'lamda')                     --> 'la'
+]]
+R.slice = _curry3(function(start, stop, list)
+	start = start == 0 and 1 or start	
+	if _isString(list) then		
+		if start < 0 then
+			start = string.len(list) + start + 1
+		end
+		if stop <= 0 then
+			stop = string.len(list) + stop + 1
+		end
+		return string.sub(list, start, stop - 1)
+	else
+		local array = {}
+		if start < 0 then
+			start = #list + start + 1
+		end
+		if stop <= 0 then
+			stop = #list + stop + 1
+		end
+		for index = start, stop - 1, 1 do
+			array[#array + 1] = list[index]
+		end
+		return array
+	end
+end)
+
+--[[
+	Returns the first `n` elements of the given list, string
+	
+	@func
+	@category Array
+	@sig Number -> [a] -> [a]
+	@sig Number -> String -> String
+	@param {Number} n
+	@param {*} list
+	@return {*}
+	@see R.drop
+	@example
+		R.take(1, {'foo', 'bar', 'baz'}) --> {'foo'}
+		R.take(2, {'foo', 'bar', 'baz'}) --> {'foo', 'bar'}
+		R.take(3, {'foo', 'bar', 'baz'}) --> {'foo', 'bar', 'baz'}
+		R.take(4, {'foo', 'bar', 'baz'}) --> {'foo', 'bar', 'baz'}
+		R.take(3, 'ramda')               --> 'ram'
+	
+		local personnel = {
+			'Dave Brubeck',
+			'Paul Desmond',
+			'Eugene Wright',
+			'Joe Morello',
+			'Gerry Mulligan',
+			'Bob Bates',
+			'Joe Dodge',
+			'Ron Crotty'
+		}	
+		local takeFive = R.take(5)
+		takeFive(personnel) --> {'Dave Brubeck', 'Paul Desmond', 'Eugene Wright', 'Joe Morello', 'Gerry Mulligan'}
+	@symb R.take(-1, [a, b]) = [a, b]
+	@symb R.take(0, [a, b]) = []
+	@symb R.take(1, [a, b]) = [a]
+	@symb R.take(2, [a, b]) = [a, b]
+]]
+R.take = _curry2(function (n, xs)
+	if n <= 0 then return R.empty(xs) end
+	return R.slice(1, n + 1, xs)
+end)
+
 -- ==================================================
 -- ================ Object Functions ================
 -- ==================================================
@@ -1144,6 +2576,7 @@ R.push = R.append
 	
 	@func
 	@category Object
+	@category Array
 	@sig String -> a -> {k: v} -> {k: v}
 	@param {String} prop The property name to set
 	@param {*} val The new value
@@ -1170,6 +2603,7 @@ end)
 	
 	@func
 	@category Object
+	@category Array
 	@typedefn Idx = String | Int
 	@sig [Idx] -> a -> {a} -> {a}
 	@param {Array} path the path to set
@@ -1189,7 +2623,7 @@ R.assocPath = _curry3(function(path, val, obj)
 	local idx = path[1]
 	if #path > 1 then
 		local nextObj = not R.isNil(obj) and _has(idx, obj) and type(obj[idx]) == "table" or {}
-		val = R.assocPath(R.slice(2, #path, path), val, nextObj)
+		val = R.assocPath(R.slice(2, #path + 1, path), val, nextObj)
 	end
 	if _isInteger(idx) and _isArray(obj) then
 		local arr = R.concat({}, obj)
@@ -1200,545 +2634,42 @@ R.assocPath = _curry3(function(path, val, obj)
 	end
 end)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 --[[
-     Returns the result of calling its first argument with the remaining
-     arguments. This is occasionally useful as a converging function for
-     [`R.converge`](#converge): the first branch can produce a function while the
-     remaining branches produce values to be passed to that function as its
-     arguments.
-     
-     @func
-
-     @since v0.9.0
-     @category Function
-     @sig (*... -> a),*... -> a
-     @param {Function} fn The function to apply to the remaining arguments.
-     @param {...*} args Any number of positional arguments.
-     @return {*}
-     @see R.apply
-     @example
-     
-          R.call(R.add, 1, 2) --> 3
-		  --R.converge example will be later
-
-     @symb R.call(f, a, b) = f(a, b)
-]]
-R.call = function(fn, ...)
-	return fn(...)
-end
-
-
---[[
-     Restricts a number to be within a range.
-     
-     Also works for other ordered types such as strings
-     
-     @func
-
-     @category Relation
-     @sig Ord a => a -> a -> a -> a
-     @param {Number} minimum The lower limit of the clamp (inclusive)
-     @param {Number} maximum The upper limit of the clamp (inclusive)
-     @param {Number} value Value to be clamped
-     @return {Number} Returns `minimum` when `val < minimum`, `maximum` when `val > maximum`, returns `val` otherwise
-     @example
-     
-          R.clamp(1, 10, -5) --> 1
-          R.clamp(1, 10, 15) --> 10
-          R.clamp(1, 10, 4)  --> 4
-]]
-R.clamp = _curry3(function(min, max, value)
-	if min > max then
-		error('min must not be greater than max in clamp(min, max, value)')
-	end
-	return value < min and min or (value > max and max or value)
-end)
-
---[[
-     Creates a deep copy of the value which may contain (nested) `Array`s and
-     `Object`s, `Number`s, `String`s, `Boolean`s and `Date`s. `Function`s are
-     assigned by reference rather than copied
-     
-     Dispatches to a `clone` method if present.
-     
-     @func
-
-     @category Object
-     @sig {*} -> {*}
-     @param {*} value The object or array to clone
-     @return {*} A deeply cloned copy of `val`
-     @example
-     
-          local objects = {{}, {}, {}}
-          local objectsClone = R.clone(objects)
-          objects == objectsClone --> false
-          objects[1] == objectsClone[1] --> false
+	Creates a deep copy of the value which may contain (nested) `Array`s and
+	`Object`s, `Number`s, `String`s, `Boolean`s and `Date`s. `Function`s are
+	assigned by reference rather than copied
+	
+	Dispatches to a `clone` method if present.
+	
+	@func
+	@category Object
+	@sig {*} -> {*}
+	@param {*} value The object or array to clone
+	@return {*} A deeply cloned copy of `val`
+	@example	
+		local objects = {{}, {}, {}}
+		local objectsClone = R.clone(objects)
+		objects == objectsClone --> false
+		objects[1] == objectsClone[1] --> false
 ]]
 R.clone = _curry1(function(value)
 	return _clone(value, true)
 end)
 
 --[[
-     `chain` maps a function over a list and concatenates the results. `chain`
-     is also known as `flatMap` in some libraries
-          
-     @func
-
-     @category List
-     @sig Chain m => (a -> m b) -> m a -> m b
-     @param {Function} fn The function to map with
-     @param {Array} list The list to map over
-     @return {Array} The result of flat-mapping `list` with `fn`
-     @example
-     
-          local duplicate = function(n) return {n, n} end
-          R.chain(duplicate, {1, 2, 3}) --> {1, 1, 2, 2, 3, 3}     
-          R.chain(R.append, R.head)({1, 2, 3}) --> {1, 2, 3, 1}
-]]
-R.chain = _curry2(function(fn, monad)
-	if _isFunction(monad) then
-		return function (x)
-			return fn(monad(x))(x)
-		end
-	end
-	return _makeFlat(false)(R.map(fn, monad))
-end)
-
-
---[[
-     Returns the result of concatenating the given lists or strings.     
-     Note: `R.concat` expects both arguments to be of the same type as array or string
-     
-     @func
-
-     @category List
-     @sig [a] -> [a] -> [a]
-     @sig String -> String -> String
-     @param {Array|String} firstList The first list
-     @param {Array|String} secondList The second list
-     @return {Array|String} A list consisting of the elements of `firstList` followed by the elements of
-     `secondList`.
-     
-     @example
-     
-          R.concat('ABC', 'DEF') -- 'ABCDEF'
-          R.concat([4, 5, 6], [1, 2, 3]) --> [4, 5, 6, 1, 2, 3]
-          R.concat([], []) --> []
-]]
-R.concat = _curry2(function(a, b)
-	if _isArray(a) then
-		if _isArray(b) then
-			return _concat(a, b)
-		else
-			error(toString(b) .. ' is not an array')
-		end
-	end
-	if _isString(a) then
-		if _isString(b) then
-			return a..b
-		else
-			error(toString(b) + ' is not a string')
-		end
-	end
-end)
-
---[[
-     Returns a function, `fn`, which encapsulates `if/else, if/else, ...` logic.
-     `R.cond` takes a list of predicate pairs. All of the arguments
-     to `fn` are applied to each of the predicates in turn until one returns a
-     "truthy" value, at which point `fn` returns the result of applying its
-     arguments to the corresponding transformer. If none of the predicates
-     matches, `fn` returns nil.
-     
-     @func
-
-     @category Logic
-     @sig [ [(*... -> Boolean),(*... -> *)] ] -> (*... -> *)
-     @param {Array} pairs A list of [predicate, transformer]
-     @return {Function}
-     @example
-     
-          local fn = R.cond({
-            {R.equals(0),   R.always('water freezes at 0°C')},
-            {R.equals(100), R.always('water boils at 100°C')},
-            {R.T,           function(temp) return 'nothing special happens at ' .. temp .. '°C' end}
-          })
-          fn(0) --> 'water freezes at 0°C'
-          fn(50) --> 'nothing special happens at 50°C'
-          fn(100) --> 'water boils at 100°C'
-]]
-R.cond = _curry1(function(p)
-	return function (...)
-		for k,v in pairs(p) do
-			if v[1](...) then
-				return v[2](...)
-			end
-		end
-	end
-end)
-
---[[
-     Makes a comparator function out of a function that reports whether the first
-     element is less than the second.
-     
-     @func
-
-     @category Function
-     @sig (a, b -> Boolean) -> (a, b -> Number)
-     @param {Function} pred A predicate function of arity two which will return `true` if the first argument
-     is less than the second, `false` otherwise
-     @return {Function} A Function :: a -> b -> Int that returns `-1` if a < b, `1` if b < a, otherwise `0`
-     @example
-     
-          local byAge = R.comparator(function(a, b) return a.age < b.age end)
-          local people = {
-            -- ...
-          }
-          local peopleByIncreasingAge = R.sort(byAge, people)
-]]
-R.comparator = _curry1(function(pred)
-	return function (a, b)
-		return pred(a, b)
-	end
-end)
-
---[[
-     Takes a function `f` and returns a function `g` such that if called with the same arguments
-     when `f` returns a "truthy" value, `g` returns `false` and when `f` returns a "falsy" value `g` returns `true`.
-          
-     @func
-
-     @category Logic
-     @sig (*... -> *) -> (*... -> Boolean)
-     @param {Function} f
-     @return {Function}
-     @see R.not
-     @example
-     
-          local isNotNil = R.complement(R.isNil)
-          isNil(null) --> true
-          isNotNil(null) --> false
-          isNil(7) --> false
-          isNotNil(7) --> true
-]]
-R.complement = _curry1(_complement)
-
---[[
-     Returns `true` if the specified value is equal, in [`R.equals`](#equals)
-     terms, to at least one element of the given list `false` otherwise.
-     
-     @func
-
-     @category List
-     @sig a -> [a] -> Boolean
-     @param {Object} a The item to compare against.
-     @param {Array} list The array to consider.
-     @return {Boolean} `true` if an equivalent item is in the list, `false` otherwise.
-     @see R.any
-     @example
-     
-          R.contains(3, {1, 2, 3}) --> true
-          R.contains(4, {1, 2, 3}) --> false
-          R.contains({ name = 'Fred' }, {{ name = 'Fred' }}) --> true
-          R.contains({42}, {{42}}) --> true
-]]
-R.contains = _curry2(_contains)
-R.containsNoCurry = function(x, xs)
-	for i, v in ipairs(xs) do
-		if v == x then
-			return true
-		end
-	end	
-	return false
-end
-
---[[
-     Accepts a converging function and a list of branching functions and returns
-     a new function. When invoked, this new function is applied to some
-     arguments, each branching function is applied to those same arguments. The
-     results of each branching function are passed as arguments to the converging
-     function to produce the return value.
-     
-     @func
-
-     @category Function
-     @sig (x1 -> x2 -> ... -> z) -> [(a -> b -> ... -> x1), (a -> b -> ... -> x2), ...] -> (a -> b -> ... -> z)
-     @param {Function} after A function. `after` will be invoked with the return values of
-            `fn1` and `fn2` as its arguments.
-     @param {Array} functions A list of functions.
-     @return {Function} A new function.
-     @see R.useWith
-     @example
-     
-          local average = R.converge(R.divide, {R.sum, R.length})
-          average({1, 2, 3, 4, 5, 6, 7}) --> 4
-     
-          local strangeConcat = R.converge(R.concat, {R.toUpper, R.toLower})
-          strangeConcat("Yodel") --> "YODELyodel"
-     
-     @symb R.converge(f, {g, h})(a, b) = f(g(a, b), h(a, b))
-]]
-R.converge = _curry2(function(after, fns)
-	return function (...)
-		local args = {...}
-		return after(unpack(R.map(function (fn)
-			return fn(unpack(args))
-		end, fns)))
-	end
-end)
-
-
---[[
-     Returns a curried equivalent of the provided function, with the specified
-     arity. The curried function has two unusual capabilities. First, its
-     arguments needn't be provided one at a time. If `g` is `R.curryN(3, f)`, the
-     following are equivalent:
-     
-       - `g(1)(2)(3)`
-       - `g(1)(2, 3)`
-       - `g(1, 2)(3)`
-       - `g(1, 2, 3)`
-     
-     Secondly, the special placeholder value [`R.__`](#__) may be used to specify
-     "gaps", allowing partial application of any combination of arguments,
-     regardless of their positions. If `g` is as above and `_` is [`R.__`](#__),
-     the following are equivalent:
-     
-       - `g(1, 2, 3)`
-       - `g(_, 2, 3)(1)`
-       - `g(_, _, 3)(1)(2)`
-       - `g(_, _, 3)(1, 2)`
-       - `g(_, 2)(1)(3)`
-       - `g(_, 2)(1, 3)`
-       - `g(_, 2)(_, 3)(1)`
-     
-     @func
-
-     @category Function
-     @sig Number -> (* -> a) -> (* -> a)
-     @param {Number} length The arity for the returned function.
-     @param {Function} fn The function to curry.
-     @return {Function} A new, curried function.
-     @see R.curry
-     @example
-     
-          local sumArgs = function(...) return R.sum({...}) end
-     
-          local curriedAddFourNumbers = R.curryN(4, sumArgs)
-          local f = curriedAddFourNumbers(1, 2)
-          local g = f(3)
-          g(4) --> 10
-]]
-R.curryN = _curry2(function(length, fn)
-	if length == 1 then
-		return _curry1(fn)
-	end
-	return _curryN(length, {}, fn)
-end)
-
-
---[[
-     Decrements its argument.
-     
-     @func
-
-     @category Math
-     @sig Number -> Number
-     @param {Number} n
-     @return {Number} n - 1
-     @see R.inc
-     @example
-     
-          R.dec(42) --> 41
-]]
-R.dec = R.add(-1)
-
-
---[[
-     Returns the second argument if it is not `null`, `nil` or `NaN`
-     otherwise the first argument is returned.
-     
-     @func
-
-     @since v0.10.0
-     @category Logic
-     @sig a -> b -> a | b
-     @param {a} default The default value.
-     @param {b} val `val` will be returned instead of `default` unless `val` is `null`, `nil` or `NaN`.
-     @return {*} The second value if it is not `null`, `nil` or `NaN`, otherwise the default value
-     @example
-     
-	 	R.defaultTo(42, nil) -- 42
-
-	@notice cannot curry this function because a nil value will be tested.
-	 
-]]
-R.defaultTo = function(d, v)
-    return v ~= nil and v or d
-end
-
---[[
-     Makes a descending comparator function out of a function that returns a value
-     that can be compared with `<` and `>`.
-     
-     @func
-
-     @category Function
-     @sig Ord b => (a -> b) -> a -> a -> Number
-     @param {Function} fn A function of arity one that returns a value that can be compared
-     @param {*} a The first item to be compared.
-     @param {*} b The second item to be compared.
-     @return {Number} `-1` if fn(a) > fn(b), `1` if fn(b) > fn(a), otherwise `0`
-     @see R.ascend
-     @example
-     
-          local byAge = R.descend(R.prop('age'))
-          local people = {
-            -- ...
-          }
-          local peopleByOldestFirst = R.sort(byAge, people)
-]]
-R.descend = _curry3(function(fn, a, b)
-	local aa = fn(a)
-	local bb = fn(b)
-	return aa > bb
-end)
-
---[[
-     Finds the set (i.e. no duplicates) of all elements in the first list not
-     contained in the second list. Objects and Arrays are compared in terms of
-     value equality, not reference equality.
-     
-     @func
-
-     @category Relation
-     @sig [*] -> [*] -> [*]
-     @param {Array} list1 The first list.
-     @param {Array} list2 The second list.
-     @return {Array} The elements in `list1` that are not in `list2`.
-     @see R.differenceWith, R.symmetricDifference, R.symmetricDifferenceWith, R.without
-     @example
-     
-          R.difference({1,2,3,4}, {7,6,5,4,3}) --> {1,2}
-          R.difference({7,6,5,4,3}, {1,2,3,4}) --> {7,6,5}
-          R.difference({{a = 1}, {b = 2}}, {{a = 1}, {c = 3}}) --> {{b = 2}}
-]]
-R.difference = _curry2(function(first, second)
-	local out = {}
-	local idx = 1
-	local firstLen = #first
-	while idx <= firstLen do
-		if (not _contains(first[idx], second)) and (not _contains(first[idx], out)) then
-			out[#out + 1] = first[idx]
-		end
-		idx = idx + 1
-	end
-	return out
-end)
-
---[[
-     Finds the set (i.e. no duplicates) of all elements in the first list not
-     contained in the second list. Duplication is determined according to the
-     value returned by applying the supplied predicate to two list elements.
-     
-     @func
-
-     @category Relation
-     @sig ((a, a) -> Boolean) -> [a] -> [a] -> [a]
-     @param {Function} pred A predicate used to test whether two items are equal.
-     @param {Array} list1 The first list.
-     @param {Array} list2 The second list.
-     @return {Array} The elements in `list1` that are not in `list2`.
-     @see R.difference, R.symmetricDifference, R.symmetricDifferenceWith
-     @example
-     
-          local cmp = function(x, y) return x.a == y.a end
-          local l1 = {{a = 1}, {a = 2}, {a = 3}}
-          local l2 = {{a = 3}, {a = 4}}
-          R.differenceWith(cmp, l1, l2) --> {{a = 1}, {a = 2}}
-]]
-R.differenceWith = _curry3(function(pred, first, second)
-	local out = {}
-	local idx = 1
-	local firstLen = #first
-	while idx <= firstLen do
-		if (not _containsWith(pred, first[idx], second)) and (not _containsWith(pred, first[idx], out)) then
-			out[#out + 1] = first[idx]
-		end
-		idx = idx + 1
-	end
-	return out
-end)
-
-
---[[
-     Returns a new object that does not contain a `prop` property.
-     
-     @func
-
-     @category Object
-     @sig String -> {k: v} -> {k: v}
-     @param {String} prop The name of the property to dissociate
-     @param {Object} obj The object to clone
-     @return {Object} A new object equivalent to the original but without the specified property
-     @see R.assoc
-     @example
-     
-          R.dissoc('b', {a = 1, b = 2, c = 3}) --> {a = 1, c = 3}
+	Returns a new object that does not contain a `prop` property.
+	All non-primitive properties are copied by reference.
+	
+	@func
+	@category Object
+	@category Array
+	@sig String -> {k: v} -> {k: v}
+	@param {String} prop The name of the property to dissociate
+	@param {Object} obj The object to clone
+	@return {Object} A new object equivalent to the original but without the specified property
+	@see R.assoc
+	@example	
+		R.dissoc('b', {a = 1, b = 2, c = 3}) --> {a = 1, c = 3}
 ]]
 R.dissoc = _curry2(function(prop, obj)
 	local result = {}
@@ -1756,23 +2687,21 @@ R.dissoc = _curry2(function(prop, obj)
 end)
 
 --[[
-     Makes a shallow clone of an object, omitting the property at the given path.
-     Note that this copies and flattens prototype properties onto the new object
-     as well. All non-primitive properties are copied by reference.
-     
-     @func
-
-     @since v0.11.0
-     @category Object
-     @typedefn Idx = String | Int
-     @sig [Idx] -> {k: v} -> {k: v}
-     @param {Array} path The path to the value to omit
-     @param {Object} obj The object to clone
-     @return {Object} A new object without the property at path
-     @see R.assocPath
-     @example
-     
-          R.dissocPath({'a', 'b', 'c'}, {a = {b = {c = 42}}}) --> {a = {b = {}}}
+	Makes a shallow clone of an object, omitting the property at the given path.
+	Note that this copies and flattens prototype properties onto the new object
+	as well. All non-primitive properties are copied by reference.
+	
+	@func
+	@category Object
+	@category Array
+	@typedefn Idx = String | Int
+	@sig [Idx] -> {k: v} -> {k: v}
+	@param {Array} path The path to the value to omit
+	@param {Object} obj The object to clone
+	@return {Object} A new object without the property at path
+	@see R.assocPath
+	@example	
+		R.dissocPath({'a', 'b', 'c'}, {a = {b = {c = 42}}}) --> {a = {b = {}}}
 ]]
 R.dissocPath = _curry2(function(path, obj)
 	if #path == 0 then
@@ -1781,7 +2710,7 @@ R.dissocPath = _curry2(function(path, obj)
 		return R.dissoc(path[1], obj)
 	else
 		local head = path[1]
-		local tail = R.slice(2, #path, path)
+		local tail = R.slice(2, #path + 1, path)
 		if obj[head] == nil then
 			return obj
 		else
@@ -1790,591 +2719,233 @@ R.dissocPath = _curry2(function(path, obj)
 	end
 end)
 
-
 --[[
-     Divides two numbers. Equivalent to `a / b`.
-     
-     @func
-
-     @category Math
-     @sig Number -> Number -> Number
-     @param {Number} a The first value.
-     @param {Number} b The second value.
-     @return {Number} The result of `a / b`.
-     @see R.multiply
-     @example
-     
-          R.divide(71, 100) --> 0.71
-     
-          local half = R.divide(R.__, 2)
-          half(42) --> 21
-     
-          local reciprocal = R.divide(1)
-          reciprocal(4)   --> 0.25
-]]
-R.divide = _curry2(function(a, b)
-	return a / b
-end)
-
---[[
-     Returns all but the first `n` elements of the given list, string, or
-     transducer/transformer (or object with a `drop` method).
-          
-     @func
-
-     @category List
-     @sig Number -> [a] -> [a]
-     @sig Number -> String -> String
-     @param {Number} n
-     @param {*} list
-     @return {*} A copy of list without the first `n` elements
-     @see R.take, R.transduce, R.dropLast, R.dropWhile
-     @example
-     
-          R.drop(1, {'foo', 'bar', 'baz'}) --> {'bar', 'baz'}
-          R.drop(2, {'foo', 'bar', 'baz'}) --> {'baz'}
-          R.drop(3, {'foo', 'bar', 'baz'}) --> {}
-          R.drop(4, {'foo', 'bar', 'baz'}) --> {}
-          R.drop(3, 'ramda')               --> 'da'
-]]
-R.drop = _curry2(function(n, xs)
-	return R.slice(math.max(1, n), 0, xs)
-end)
-
---[[
-     Returns a list containing all but the last `n` elements of the given `list`.
-     
-     @func
-
-     @since v0.16.0
-     @category List
-     @sig Number -> [a] -> [a]
-     @sig Number -> String -> String
-     @param {Number} n The number of elements of `list` to skip.
-     @param {Array} list The list of elements to consider.
-     @return {Array} A copy of the list with only the first `list.length - n` elements
-     @see R.takeLast, R.drop, R.dropWhile, R.dropLastWhile
-     @example
-     
-          R.dropLast(1, {'foo', 'bar', 'baz'}) --> {'foo', 'bar'}
-          R.dropLast(2, {'foo', 'bar', 'baz'}) --> {'foo'}
-          R.dropLast(3, {'foo', 'bar', 'baz'}) --> {}
-          R.dropLast(4, {'foo', 'bar', 'baz'}) --> {}
-          R.dropLast(3, 'ramda')               --> 'ra'
-]]
-R.dropLast = _curry2(function(n, xs)
-    return R.take(n < #xs and #xs - n or 0, xs)
-end)
-
---[[
-     Returns a new list excluding all the tailing elements of a given list which
-     satisfy the supplied predicate function. It passes each value from the right
-     to the supplied predicate function, skipping elements until the predicate
-     function returns a `falsy` value. The predicate function is applied to one argument:
-     (value)*.
-     
-     @func
-
-     @since v0.16.0
-     @category List
-     @sig (a -> Boolean) -> [a] -> [a]
-     @param {Function} predicate The function to be called on each element
-     @param {Array} list The collection to iterate over.
-     @return {Array} A new array without any trailing elements that return `falsy` values from the `predicate`.
-     @see R.takeLastWhile, R.addIndex, R.drop, R.dropWhile
-     @example
-     
-          local lteThree = x => x <= 3
-     
-          R.dropLastWhile(lteThree, {1, 2, 3, 4, 3, 2, 1}) --> {1, 2, 3, 4}
- ]]
-R.dropLastWhile = _curry2(function(pred, list)
-	local idx = #list
-	while idx > 0 and pred(list[idx]) do
-		idx = idx - 1
-	end
-	if (idx == 0) then return {} end
-	return R.slice.call(1, idx, list)
-end)
-
-
---[[
-     Returns a new list without any consecutively repeating elements. Equality is
-     determined by applying the supplied predicate to each pair of consecutive elements. The
-     first element in a series of equal elements will be preserved.
-     
-     Acts as a transducer if a transformer is given in list position.
-     
-     @func
-
-     @category List
-     @sig (a, a -> Boolean) -> [a] -> [a]
-     @param {Function} pred A predicate used to test whether two items are equal.
-     @param {Array} list The array to consider.
-     @return {Array} `list` without repeating elements.
-     @see R.transduce
-     @example
-     
-          local l = {1, -1, 1, 3, 4, -4, -4, -5, 5, 3, 3}
-          R.dropRepeatsWith(R.eqBy(math.abs), l) --> {1, 3, 4, -5, 3}
-]]
-R.dropRepeatsWith = _curry2(function(pred, list)
-	local result = {}
-	local idx = 2
-	local len = #list
-	if len ~= 0 then 
-		result[1] = list[1]
-		while idx <= len do
-			if not pred(R.last(result), list[idx]) then
-				result[#result + 1] = list[idx]
-			end
-			idx = idx + 1
-		end
-	end
-	return result
-end)
-
---[[
-     Returns a new list excluding the leading elements of a given list which
-     satisfy the supplied predicate function. It passes each value to the supplied
-     predicate function, skipping elements while the predicate function returns
-     `true`. The predicate function is applied to one argument: *(value)*.    
-     
-     @func
-
-     @category List
-     @sig (a -> Boolean) -> [a] -> [a]
-     @param {Function} fn The function called per iteration.
-     @param {Array} list The collection to iterate over.
-     @return {Array} A new array.
-     @see R.takeWhile, R.transduce, R.addIndex
-     @example
-     
-          local lteTwo = function(x) return x <= 2 end
-     
-          R.dropWhile(lteTwo, {1, 2, 3, 4, 3, 2, 1}) --> {3, 4, 3, 2, 1}
-]]
-R.dropWhile = _curry2(function(pred, list)
-	local idx = 1
-	local len = #list
-	while idx <= len and pred(list[idx]) do
-		idx = idx + 1
-	end
-	return R.slice(1, idx - 1, list)
-end)
-
---[[
-     A function wrapping calls to the two functions in an `||` operation,
-     returning the result of the first function if it is truth-y and the result
-     of the second function otherwise. Note that this is short-circuited,
-     meaning that the second function will not be invoked if the first returns a
-     truth-y value.    
-     
-     @func
-
-     @category Logic
-     @sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
-     @param {Function} f a predicate
-     @param {Function} g another predicate
-     @return {Function} a function that applies its arguments to `f` and `g` and `||`s their outputs together.
-     @see R.or
-     @example
-     
-          local gt10 = function(x) return x > 10 end
-          local even = function(x) return x % 2 == 0 end
-          local f = R.either(gt10, even)
-          f(101) --> true
-          f(8) --> true
-]]
-R.either = _curry2(function(f, g)
-	return  function (...)
-		return f(...) or g(...)
-	end
-end)
-
---[[
-     Returns the empty value of its argument's type. Lamda defines the empty
-     value of Table(`{}`), String (`''`), and Arguments.
-     
-     Dispatches to the `empty` method of the first argument, if present.
-     
-     @func
-
-     @category Function
-     @sig a -> a
-     @param {*} x
-     @return {*}
-     @example
-     
-          R.empty({1, 2, 3})     --> {}
-          R.empty('unicorns')    --> ''
-          R.empty({x = 1, y = 2})  --> {}
-]]
-R.empty = _curry1(function(x)
-	if (type(x) == "table") then
-		return {}
-	elseif (type(x) == "string") then
-		return ""
-	elseif (type(x) == "number") then
-		return 0
-	elseif (type(x) == "boolean") then
-		return false
-	else
-		return nil
-	end
-end)
-
---[[
-	Returns `true` if its arguments are equivalent, `false` otherwise. Handles
-	cyclical data structures.
+	Returns a list containing the names of all the enumerable own properties of
+	the supplied object.	
 	
 	@func
-
-	@category Relation
-	@sig a -> b -> Boolean
-	@param {*} a
-	@param {*} b
-	@return {Boolean}
+	@category Object
+	@sig {k: v} -> [k]
+	@param {Object} obj The object to extract properties from
+	@return {Array} An array of the object's own properties.
+	@see R.keysIn, R.values, R.sortedKeys
 	@example
+		R.keys({a = 1, b = 2, c = 3}) --> {'a', 'b', 'c'}
+]]
+R.keys = _curry1(function(obj)
+	if not R.isTable(obj) then return {} end
+	local keys = {}
+	for k, v in pairs(obj)	do
+		table.insert(keys, k)
+	end
+	return keys
+end)
+
+--[[
+	Returns a sorted list containing the names of all the enumerable own properties of
+	the supplied object.
 	
-	     R.equals(1, 1) --> true
-	     R.equals(1, '1') --> false
-	     R.equals({1, 2, 3}, {1, 2, 3}) --> true
+	@func
+	@category Object
+	@sig {k: v} -> [k]
+	@param {Object} obj The object to extract properties from
+	@return {Array} An array of the object's own properties.
+	@see R.keys
+	@example
+		R.sortedKeys({a = 1, x = 2, c = 3}) --> {'a', 'b', 'x'}
+]]
+R.sortedKeys = _curry1(function(obj)
+	if not R.isTable(obj) then return {} end
+	local keys = {}
+	for k, v in pairs(obj)	do
+		table.insert(keys, k)
+	end
+	table.sort(keys)
+	return keys
+end)
+--[[
+	@alias sortedKeys
+]]
+R.skeys = R.sortedKeys
+
+--[[
+	Returns a list of all the enumerable own properties of the supplied object.
+	Note that the order of the output array is not guaranteed across different
+	JS platforms.
 	
-	     local a = {} 
-		 a.v = a
-	     local b = {} 
-		 b.v = b
-	     R.equals(a, b) --> stack error , don't do this!
+	@func
+	@category Object
+	@sig {k: v} -> [v]
+	@param {Object} obj The object to extract values from
+	@return {Array} An array of the values of the object's own properties.
+	@see R.valuesIn, R.keys
+	@example     
+        R.values({a: 1, b: 2, c: 3}) --> {1, 2, 3}
 ]]
-R.equals = _curry2(_equals)
-
---[[
-     Returns a new list without any consecutively repeating elements.
-     [`R.equals`](#equals) is used to determine equality.
-     
-     Acts as a transducer if a transformer is given in list position.
-     
-     @func
-
-     @category List
-     @sig [a] -> [a]
-     @param {Array} list The array to consider.
-     @return {Array} `list` without repeating elements.
-     @see R.transduce
-     @example
-     
-         R.dropRepeats({1, 1, 1, 2, 3, 4, 4, 2, 2}) --> {1, 2, 3, 4, 2}
-]]
-R.dropRepeats = _curry1(R.dropRepeatsWith(R.equals))
-
---[[
-     Takes a function and two values in its domain and returns `true` if the
-     values map to the same value in the codomain `false` otherwise.
-     
-     @func
-
-     @category Relation
-     @sig (a -> b) -> a -> a -> Boolean
-     @param {Function} f
-     @param {*} x
-     @param {*} y
-     @return {Boolean}
-     @example
-     
-          R.eqBy(math.abs, 5, -5) --> true
-]]
-R.eqBy = _curry3(function(f, x, y)
-	return R.equals(f(x), f(y))
-end)
-
---[[
-     Reports whether two objects have the same value, in [`R.equals`](#equals)
-     terms, for the specified property. Useful as a curried predicate.
-     
-     @func
-
-     @category Object
-     @sig k -> {k: v} -> {k: v} -> Boolean
-     @param {String} prop The name of the property to compare
-     @param {Object} obj1
-     @param {Object} obj2
-     @return {Boolean}
-     
-     @example
-     
-          local o1 = { a = 1, b = 2, c = 3, d = 4 }
-          local o2 = { a = 10, b = 20, c = 3, d = 40 }
-          R.eqProps('a', o1, o2) --> false
-          R.eqProps('c', o1, o2) --> true
-]]
-R.eqProps = _curry3(function(prop, obj1, obj2)
-	return R.equals(obj1[prop], obj2[prop])
-end)
-
---[[
-     Takes a predicate and a `Filterable`, and returns a new filterable of the
-     same type containing the members of the given filterable which satisfy the
-     given predicate. Filterable objects include plain objects or any object
-     that has a filter method such as `Array`.
-          
-     @func
-
-     @since v0.1.0
-     @category List
-     @sig Filterable f => (a -> Boolean) -> f a -> f a
-     @param {Function} pred
-     @param {Array} filterable
-     @return {Array} Filterable
-     @see R.reject, R.transduce, R.addIndex
-     @example
-     
-          local isEven = function(n) return n % 2 == 0 end
-     
-          R.filter(isEven, {1, 2, 3, 4}) --> {2, 4}
-     
-          R.filter(isEven, {a = 1, b = 2, c = 3, d = 4}) --> {b = 2, d = 4}
-]]
-R.filter = _curry2(function(pred, filterable)
-	if _isMap(filterable) then
-		local result = {}
-		for k,v in pairs(filterable) do
-			if pred(v) then
-				result[k] = v
-			end
-		end
-		return result
-	else
-		return _filter(pred, filterable)
+R.values = _curry1(function(obj)
+	if not R.isTable(obj) then return {} end
+	local values = {}
+	for _, p in pairs(obj) do
+		table.insert(values, p)
 	end
-end)
-
---[[
-     Returns the first element of the list which matches the predicate, or
-     `nil` if no element matches.
-          
-     @func
-
-     @since v0.1.0
-     @category List
-     @sig (a -> Boolean) -> [a] -> a | nil
-     @param {Function} fn The predicate function used to determine if the element is the
-            desired one.
-     @param {Array} list The array to consider.
-     @return {Object} The element found, or `nil`.
-     @see R.transduce
-     @example
-     
-          local xs = {{a = 1}, {a = 2}, {a = 3}}
-          R.find(R.propEq('a', 2))(xs) --> {a = 2}
-          R.find(R.propEq('a', 4))(xs) --> nil
-]]
-R.find = _curry2(function(fn, list)
-	local idx = 1
-	local len = #list
-	while idx <= len do
-		if fn(list[idx]) then
-			return list[idx]
-		end
-		idx = idx + 1
-	end
-end)
-
---[[
-     Returns the index of the first element of the list which matches the
-     predicate, or `-1` if no element matches.
-          
-     @func
-
-     @category List
-     @sig (a -> Boolean) -> [a] -> Number
-     @param {Function} fn The predicate function used to determine if the element is the
-     desired one.
-     @param {Array} list The array to consider.
-     @return {Number} The index of the element found, or `-1`.
-     @see R.transduce
-     @example
-     
-          local xs = {{a = 1}, {a = 2}, {a = 3}}
-          R.findIndex(R.propEq('a', 2))(xs) --> 2
-          R.findIndex(R.propEq('a', 4))(xs) --> -1
-]]
-R.findIndex = _curry2(function(fn, list)
-	local idx = 1
-	local len = #list
-	while idx <= len do
-		if fn(list[idx]) then
-			return idx
-		end
-		idx = idx + 1
-	end
-	return -1
-end)
-
---[[
-     Returns the last element of the list which matches the predicate, or
-     `nil` if no element matches.
-          
-     @func
-
-     @category List
-     @sig (a -> Boolean) -> [a] -> a | nil
-     @param {Function} fn The predicate function used to determine if the element is the
-     desired one.
-     @param {Array} list The array to consider.
-     @return {Object} The element found, or `nil`.
-     @see R.transduce
-     @example
-     
-          local xs = {{a = 1, b = 0}, {a = 1, b = 1}}
-          R.findLast(R.propEq('a', 1))(xs) --> {a = 1, b = 1}
-          R.findLast(R.propEq('a', 4))(xs) --> nil
-]]
-R.findLast = _curry2(function(fn, list)
-	local idx = #list
-	while idx > 0 do
-		if fn(list[idx]) then
-			return list[idx]
-		end
-		idx = idx - 1
-	end
+	return values
 end)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --[[
-     Returns the index of the last element of the list which matches the
-     predicate, or `-1` if no element matches.
-     
-     @func
-
-     @category List
-     @sig (a -> Boolean) -> [a] -> Number
-     @param {Function} fn The predicate function used to determine if the element is the
-     desired one.
-     @param {Array} list The array to consider.
-     @return {Number} The index of the element found, or `-1`.
-     @see R.transduce
-     @example
-     
-          local xs = {{a = 1, b = 0}, {a = 1, b = 1}}
-          R.findLastIndex(R.propEq('a', 1))(xs) --> 1
-          R.findLastIndex(R.propEq('a', 4))(xs) --> -1
-]]
-R.findLastIndex = _curry2(function(fn, list)
-	local idx = #list
-	while idx > 0 do
-		if fn(list[idx]) then
-			return idx
-		end
-		idx = idx - 1
-	end
-end)
-
---[[
-     Returns a new list by pulling every item out of it (and all its sub-arrays)
-     and putting them in a new array, depth-first.
-     
-     @func
-
-     @category List
-     @sig [a] -> [b]
-     @param {Array} list The array to consider.
-     @return {Array} The flattened list.
-     @see R.unnest
-     @example
-     
-          R.flatten({1, 2, {3, 4}, 5, {6, {7, 8, {9, {10, 11}, 12}}}})
-          --> {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
-]]
-R.flatten = _curry1(_makeFlat(true))
-
---[[
-     Returns a new function much like the supplied one, except that the first two
-     arguments' order is reversed.
-     
-     @func
-
-     @category Function
-     @sig (a -> b -> c -> ... -> z) -> (b -> a -> c -> ... -> z)
-     @param {Function} fn The function to invoke with its first two parameters reversed.
-     @return {*} The result of invoking `fn` with its first two parameters' order reversed.
-     @example
-	 @bug
-     
-          local mergeThree = function(a, b, c) return a .. b .. c end
-     
-          mergeThree('1','2','3') --> "123"
-     
-          R.flip(mergeThree)('1','2','3') --> "213"
-     @symb R.flip(f)(a, b, c) = f(b, a, c)
-]]
-R.flip = _curry1(function(fn)
-	return _curryN(2, {}, function (a, b, ...)		
-		return fn(b, a, ...)
-	end)
-end)
-
-
---[[
-     Iterate over an input `list`, calling a provided function `fn` for each
-     element in the list.
-     
-     `fn` receives one argument: *(value)*.    
-     
-     @func
-
-     @category List
-     @sig (a -> *) -> [a] -> [a]
-     @param {Function} fn The function to invoke. Receives one argument, `value`.
-     @param {Array} list The list to iterate over.
-     @return {Array} The original list.
-     @see R.addIndex
-     @example
-     
-          local printXPlusFive = function(x) print(x + 5) end
-          R.forEach(printXPlusFive, {1, 2, 3}) --> {1, 2, 3}
-          -- logs 6
-          -- logs 7
-          -- logs 8
-     @symb R.forEach(f, {a, b, c}) = {a, b, c}
+	Iterate over an input `list`, calling a provided function `fn` for each
+	element in the list.
+	
+	`fn` receives one argument: *(value)*.    
+	
+	@func
+	@category Array
+	@category Object
+	@sig (a -> *) -> [a] -> [a]
+	@param {Function} fn The function to invoke. Receives argument, `value` and `key`.
+	@param {Array} list The list to iterate over.
+	@return {Array} The original list.
+	@see R.addIndex
+	@example
+		local printXPlusFive = function(x) print(x + 5) end
+		R.forEach(printXPlusFive, {1, 2, 3})
+		--> 6
+		--> 7
+		--> 8
+	@symb R.forEach(f, {a, b, c}) = {a, b, c}
 ]]
 R.forEach = _curry2(function(fn, list)
-	local len = #list
-	local idx = 1
-	while idx <= len do
-		fn(list[idx])
-		idx = idx + 1
+	if _isObject(list) then
+		for k, v in pairs(list) do
+			fn(v, k)
+		end
+	elseif _isArray(list) then
+		for k, v in ipairs(list) do
+			fn(v, k)
+		end
 	end
 	return list
 end)
 
---[[
-     Iterate over an input `object`, calling a provided function `fn` for each
-     key and value in the object.
-     
-     `fn` receives three argument: *(value, key, obj)*.
-     
-     @func
-
-     @category Object
-     @sig ((a, String, StrMap a) -> Any) -> StrMap a -> StrMap a
-     @param {Function} fn The function to invoke. Receives three argument, `value`, `key`, `obj`.
-     @param {Object} obj The object to iterate over.
-     @return {Object} The original object.
-     @example
-     
-          local printKeyConcatValue = function(value, key) print(key .. ':' .. value) end
-          R.forEachObjIndexed(printKeyConcatValue, {x = 1, y = 2}) --> {x = 1, y = 2}
-          -- logs x:1
-          -- logs y:2
-     @symb R.forEachObjIndexed(f, {x = a, y = b}) = {x = a, y = b}
-]]
-R.forEachObjIndexed = _curry2(function(fn, obj)
-	for k,v in pairs(obj) do
-		fn(v, k, obj)
-	end
-	return obj
-end)
 
 
 --[[
@@ -2888,104 +3459,6 @@ R.invertObj = _curry1(function(obj)
 	return out
 end)
 
---[[
-     See if an object (`val`) is an instance of the supplied constructor. This
-     function will check up the inheritance chain, if any.
-     
-     @func
-
-     @category Type
-     @sig (* -> {*}) -> a -> Boolean
-     @param {Object} ctor A constructor
-     @param {*} val The value to test
-     @return {Boolean}
-     @example
-     
-          R.is(R.TABLE, {}) --> true
-          R.is(R.NUMBER, 1) --> true
-          R.is(R.MAP, 1) --> false
-          R.is(R.STRING, 's') --> true     
-          R.is(R.ARRAY, 's') --> false
-          R.is(R.NUMBER, {}) --> false
-	 @notify : curry function cannot detect nil value
-]]
-R.is = _curry2(function(Type, val)
-	if Type == R.TABLE then
-		return type(val) == "table"
-	elseif Type == R.ARRAY then
-		return _isArray(val)
-	elseif Type == R.MAP then
-		return _isMap(val)
-	elseif Type == R.STRING then
-		return _isString(val)
-	elseif Type == R.INTEGER then
-		return _isInteger(val)
-	elseif Type == R.NUMBER then
-		return type(val) == "number"
-	elseif Type == R.FUNCTION then 
-		return type(val) == "function"
-	else
-		return false
-	end
-end)
-
---[[
-     Returns `true` if the given value is its type's empty value `false`
-     otherwise.
-     
-     @func
-
-     @category Logic
-     @sig a -> Boolean
-     @param {*} x
-     @return {Boolean}
-     @see R.empty
-     @example
-     
-          R.isEmpty({1, 2, 3})   --> false
-          R.isEmpty({})          --> true
-          R.isEmpty('')          --> true
-          R.isEmpty(nil)        --> true -- change to true
-          R.isEmpty({})          --> true
-          R.isEmpty({length = 0}) --> false
-	 @notify can not curry this function
-]]
--- R.isEmpty = function(x)
--- 	return x == nil or R.equals(x, R.empty(x))
--- end
-
-R.isEmpty = function(x)
-	if x == nil then 
-		return true
-	elseif type(x) == "string" then 
-		return x == ""
-	elseif type(x) == "table" then
-		return next(x) == nil
-	else
-		return false
-	end
-end
-
---[[
-	Checks if the input value is `nil`.
-	
-	@func
-
-	@category Type
-	@sig * -> Boolean
-	@param {*} x The value to test.
-	@return {Boolean} `true` if `x` is `nil` or `null`, otherwise `false`.
-	@example
-	
-	     R.isNil(null) --> true
-	     R.isNil(nil) --> true
-	     R.isNil(0) --> false
-	     R.isNil([]) --> false
-	@notify : cannot curry this function
-]]
-R.isNil = function(x)
-	return x == nil
-end
 
 --[[
      Returns a string made by inserting the `separator` between each element and
@@ -3044,41 +3517,6 @@ R.juxt = _curry1(function(fns)
 	end, fns)
 end)
 
-
---[[
-     Returns a list containing the names of all the enumerable own properties of
-     the supplied object.
-     Note that the order of the output array is not guaranteed to be consistent
-     across different JS platforms.
-     
-     @func
-
-     @since v0.1.0
-     @category Object
-     @sig {k: v} -> [k]
-     @param {Object} obj The object to extract properties from
-     @return {Array} An array of the object's own properties.
-     @see R.keysIn, R.values
-     @example
-     
-          R.keys({a = 1, b = 2, c = 3}) --> {'a', 'b', 'c'}
-]]
-R.keys = _curry1(function(obj)
-	if not _isMap(obj) then
-		error("param is not available map object.")
-	else
-		return R.map(R.second, obj)
-	end
-end)
-
-R.dictKeys = _curry1(function(obj)
-	if not obj then return {} end
-	local keys = {}
-	for k, v in pairs(obj)	do
-		table.insert(keys, k)
-	end
-	return keys
-end)
 
 --[[
      Returns the position of the last occurrence of an item in an array, or -1 if
@@ -3217,7 +3655,7 @@ end)
      @param {Function} fn The function to be called on every element of the input `list`.
      @param {Array} list The list to be iterated over.
      @return {Array} The new list.
-     @see R.transduce
+     
      @example
      
           local double = x => x * 2
@@ -3234,7 +3672,7 @@ R.map = _curry2(function(fn, list)
 		for k,v in ipairs(list) do
 			result[k] = fn(v)			
 		end		
-	elseif _isMap(list) then
+	elseif _isObject(list) then
 		for k,v in pairs(list) do
 			result[#result + 1] = fn(v, k, list)
 		end	
@@ -3244,7 +3682,7 @@ end)
 
 R.mapObject = _curry2(function(fn, list)
 	local result = {}
-	if _isMap(list) then
+	if _isObject(list) then
 		for k,v in pairs(list) do
 			result[k] = fn(v, k, list)
 		end	
@@ -3628,7 +4066,7 @@ end)
 ]]
 R.mergeDeepWithKey = _curry3(function(fn, lObj, rObj)
 	return R.mergeWithKey(function (k, lVal, rVal)
-		if _isMap(lVal) and _isMap(rVal) then
+		if _isObject(lVal) and _isObject(rVal) then
 			return R.mergeDeepWithKey(fn, lVal, rVal)
 		else
 			return fn(k, lVal, rVal)
@@ -4560,7 +4998,7 @@ end)
 R.pipe = function(...)
 	local args = {...}
 	if #args == 0 then
-		error('pipe requires at least one argument')
+		error('<lamda_error> pipe:: requires at least one argument')
 	end
 	return R.reduce(_pipe, args[1], R.tail(args))
 end
@@ -4592,7 +5030,7 @@ end
 R.compose = function(...)
 	local args = {...}
 	if #args == 0 then
-		error('compose requires at least one argument')
+		error('<lamda_error> compose:: requires at least one argument')
 	end
 	return R.pipe(unpack(R.reverse(args)))
 end
@@ -4690,7 +5128,6 @@ end)
      
           favorite(alice)  --> nil
           favoriteWithDefault(alice)  --> 'Ramda'
-	 * @notify no nil param accepted
 ]]
 R.propOr = _curry3(function(val, p, obj)
     return _has(p, obj) and obj[p] or val
@@ -4795,7 +5232,7 @@ end)
 ]]
 R.range = _curry2(function(from, to)
 	if not _isInteger(from) or not _isInteger(to) then
-		error('Both arguments to range must be numbers')
+		error('<lamda_error> range:: Both arguments to range must be numbers')
 	end
 	local result = {}
 	local n = from
@@ -4992,7 +5429,7 @@ end)
      @param {Array} list The array to group
      @return {Object} An object with the output of `fn` for keys, mapped to arrays of elements
              that produced that key when passed to `fn`.
-     @see R.transduce
+     
      @example
      
           local byGrade = R.groupBy(function(student) {
@@ -5367,54 +5804,7 @@ R.set = _curry3(function(lens, v, x)
 	return R.over(lens, R.always(v), x)
 end)
 
---[[
-     Returns the elements of the given list or string (or object with a `slice`
-     method) from `fromIndex` (inclusive) to `toIndex` (inclusive).
-     
-     Dispatches to the `slice` method of the third argument, if present.
-     
-     @func
 
-     @since v0.1.4
-     @category List
-     @sig Number -> Number -> [a] -> [a]
-     @sig Number -> Number -> String -> String
-     @param {Number} fromIndex The start index (inclusive).
-     @param {Number} toIndex The end index (exclusive).
-     @param {*} list
-     @return {*}
-     @example
-     
-          R.slice(2, 3, ['a', 'b', 'c', 'd'])        --> ['b', 'c']
-          R.slice(1, -2, ['a', 'b', 'c', 'd'])       --> ['a', 'b', 'c']
-          R.slice(-3, -1, ['a', 'b', 'c', 'd'])      --> ['b', 'c', 'd']
-          R.slice(1, 3, 'ramda')                     --> 'ram'
-]]
-R.slice = _curry3(function(start, stop, list)
-	start = start == 0 and 1 or start
-	if _isString(list) then		
-		if start < 0 then
-			start = string.len(list) + start + 1
-		end
-		if stop < 0 then
-			stop = string.len(list) + stop + 1
-		end
-		stop = stop or string.len(list)
-		return string.sub(list, start, stop)
-	else
-		local array = {}
-		if start < 0 then
-			start = #list + start + 1
-		end
-		if stop < 0 then
-			stop = #list + stop + 1
-		end
-		for index = start, stop, 1 do
-			array[#array + 1] = list[index]
-		end
-		return array
-	end
-end)
 
 --[[
      Returns all but the last element of the given list or string.
@@ -5628,7 +6018,7 @@ end)
 ]]
 R.splitEvery = _curry2(function(n, list)
 	if n <= 0 then
-		error('First argument to splitEvery must be a positive integer')
+		error('<lamda_error> splitEvery:: First argument to splitEvery must be a positive integer')
 	end
 	local result = {}
 	local idx = 1
@@ -5836,53 +6226,7 @@ end)
 ]]
 R.tail = R.slice(2, 0)
 
---[[
-     Returns the first `n` elements of the given list, string, or
-     transducer/transformer (or object with a `take` method).
-     
-     Dispatches to the `take` method of the second argument, if present.
-     
-     @func
 
-     @since v0.1.0
-     @category List
-     @sig Number -> [a] -> [a]
-     @sig Number -> String -> String
-     @param {Number} n
-     @param {*} list
-     @return {*}
-     @see R.drop
-     @example
-     
-          R.take(1, ['foo', 'bar', 'baz']) --> ['foo']
-          R.take(2, ['foo', 'bar', 'baz']) --> ['foo', 'bar']
-          R.take(3, ['foo', 'bar', 'baz']) --> ['foo', 'bar', 'baz']
-          R.take(4, ['foo', 'bar', 'baz']) --> ['foo', 'bar', 'baz']
-          R.take(3, 'ramda')               --> 'ram'
-     
-          local personnel = [
-            'Dave Brubeck',
-            'Paul Desmond',
-            'Eugene Wright',
-            'Joe Morello',
-            'Gerry Mulligan',
-            'Bob Bates',
-            'Joe Dodge',
-            'Ron Crotty'
-          ]
-     
-          local takeFive = R.take(5)
-          takeFive(personnel)
-          --> ['Dave Brubeck', 'Paul Desmond', 'Eugene Wright', 'Joe Morello', 'Gerry Mulligan']
-     @symb R.take(-1, [a, b]) = [a, b]
-     @symb R.take(0, [a, b]) = []
-     @symb R.take(1, [a, b]) = [a]
-     @symb R.take(2, [a, b]) = [a, b]
-]]
-R.take = _curry2(function (n, xs)
-	if n <= 0 then return {} end
-	return R.slice(1, n, xs)
-end)
 
 --[[
      Returns a new list containing the last `n` elements of the given list.
@@ -6070,7 +6414,7 @@ R.times = _curry2(function (fn, n)
 	local idx = 1
 	local list = {}
 	if len <= 0 then
-		error('n must be a non-negative number')
+		error('<lamda_error> times:: n must be a non-negative number')
 	end
 	while idx <= len do
 		list[idx] = fn(idx)
@@ -6631,37 +6975,6 @@ R.project = R.useWith(R.map, {
 	R.identity
 })
 
---[[
-     Returns a list of all the enumerable own properties of the supplied object.
-     Note that the order of the output array is not guaranteed across different
-     JS platforms.
-     
-     @func
-
-     @since v0.1.0
-     @category Object
-     @sig {k: v} -> [v]
-     @param {Object} obj The object to extract values from
-     @return {Array} An array of the values of the object's own properties.
-     @see R.valuesIn, R.keys
-     @example
-     
-          R.values({a: 1, b: 2, c: 3}) --> [1, 2, 3]
-]]
-R.values = _curry1(function(obj)
-	if not _isMap(obj) then
-		return {}
-	end
-	return R.map(R.first, obj)
-end)
-
-R.valuesObj = _curry1(function(obj)	
-	local values = {}
-	for _, p in pairs(obj) do
-		table.insert(values, p)
-	end
-	return values
-end)
 
 --[[
      Returns a "view" of the given data structure, determined by the given lens.
@@ -6822,7 +7135,7 @@ end)
      @param {Array} list1 The values to be removed from `list2`.
      @param {Array} list2 The array to remove values from.
      @return {Array} The new array without values in `list1`.
-     @see R.transduce, R.difference
+     , R.difference
      @example
      
           R.without([1, 2], [1, 2, 1, 3, 4]) --> [3, 4]
@@ -7031,17 +7344,6 @@ R.boxMullerSampling = function(mu, sigma)
 	--local z1 = math.sqrt(-2 * math.log(u)) * math.sin(2 * math.pi * v)
 	return mu + z0 * sigma
 end
-
-R.NULL = "@@null"
-R.ARRAY = "@@array"
-R.MAP = "@@map"
-R.TABLE = "@@table"
-R.STRING = "@@string"
-R.INTEGER = "@@int"
-R.NUMBER = "@@number"
-R.NIL = "@@nil"
-R.FUNCTION = "@@func"
-R.USERDATA = "@@user"
 
 --Not Implements
 --Transformers

@@ -79,6 +79,17 @@ function TestFunc.test_ascend()
 	this.lu.assertEquals(peopleByYoungestFirst, {{name = "Mikhail", age = 62}, {name = "Emma", age = 70}, {name = "Peter", age = 78}})
 end
 
+function TestFunc.test_descend()
+	local byAge = R.descend(R.prop('age'))
+	local people = {
+		{ name = 'Emma', age = 70 },
+		{ name = 'Peter', age = 78 },
+		{ name = 'Mikhail', age = 62 },
+	}
+	local peopleByYoungestFirst = R.sort(byAge, people)
+	this.lu.assertEquals(peopleByYoungestFirst, {{name = "Peter", age = 78}, {name = "Emma", age = 70}, {name = "Mikhail", age = 62}})
+end
+
 function TestFunc.test_ary()
 	local f = function(a, b, c, d, e, f, g)
 		return {a, b, c, d, e, f, g}
@@ -118,6 +129,83 @@ function TestFunc.test_both()
 	local len3_and_all_gt_5 = R.both(R.o(R.equals(3), R.size))(R.all(R.lt(5)))
 	this.lu.assertTrue(len3_and_all_gt_5({6,7,8}))
 	this.lu.assertFalse(len3_and_all_gt_5({3,7,8}))
+end
+
+function TestFunc.test_cond()
+	local cond = R.cond({
+		{R.equals(5), 		R.T},
+		{R.equals(8), 		R.F},
+		{R.lt(100), 		function(v) return v*2 end}
+	})
+	this.lu.assertTrue(cond(5))
+	this.lu.assertFalse(cond(8))
+	this.lu.assertEquals(cond(150), 300)
+	this.lu.assertNil(cond(50))
+end
+
+function TestFunc.test_comparator()
+	local byAge = R.comparator(function(a, b)
+		return a.age < b.age
+	end)
+	local people = {
+		{ name = 'Emma', age = 70 },
+		{ name = 'Peter', age = 78 },
+		{ name = 'Mikhail', age = 62 },
+	}
+	local peopleByYoungestFirst = R.sort(byAge, people)
+	this.lu.assertEquals(peopleByYoungestFirst, {{name = "Mikhail", age = 62}, {name = "Emma", age = 70}, {name = "Peter", age = 78}})
+end
+
+function TestFunc.test_complement()
+	local isNotNil = R.complement(R.isNil)
+	this.lu.assertTrue(R.isNil(nil))
+	this.lu.assertFalse(isNotNil(nil))
+	this.lu.assertFalse(R.isNil(7))
+	this.lu.assertTrue(isNotNil(7))
+end
+
+function TestFunc.test_converge()
+	local average = R.converge(R.divide, {R.sum, R.length})
+	this.lu.assertEquals(average({1,2,3,10}), 4)
+	local strangeConcat = R.converge(R.concat, {R.toUpper, R.toLower})
+	this.lu.assertEquals(strangeConcat("Hello"), "HELLOhello")
+end
+
+function TestFunc.test_curry()
+	local f1 = R.curry1(function(a) return a + 1 end)
+	this.lu.assertEquals(f1()()(5), 6)
+
+	local f2 = R.curry2(function(a, b) return a + b end)
+	this.lu.assertEquals(f2()(5)()(6), 11)
+
+	f2 = R.curry2(function(a, b, c) return a + b + c end)
+	this.lu.assertEquals(f2()(5)()(6, 1), 12)
+
+	local f3 = R.curry3(function(a, b, c) return a + b + c end)
+	this.lu.assertEquals(f3()(1)()(2,3), 6)
+
+	f3 = R.curry3(function(a, b, c, d) return a + b + c + d end)
+	this.lu.assertError(f3()(1)(), 2, 3)
+	this.lu.assertEquals(f3()(1)()(2,3,4), 10)
+
+	local f5 = R.curryN(5, function(a, b, c, d, e) return a + b + c + d + e end)
+	this.lu.assertEquals(f5()(1)()(2,3)()()(4)(-10), 0)
+end
+
+function TestFunc.test_either()
+	this.lu.assertFalse(R.either(R.gte(3), R.lte(5))(4))
+	this.lu.assertTrue(R.either(R.gte(3), R.lte(5))(2))
+	this.lu.assertTrue(R.either(R.gte(3), R.lte(5))(6))
+end
+
+function TestFunc.test_flip()
+	local f = function(a,b,c,d)
+		return a..b..c..d
+	end
+	this.lu.assertEquals(R.flip(f)(1,2,3,4), "2134")
+	this.lu.assertIsFunction(R.flip(f)(1))
+	local strangelt = R.flip(R.gt)
+	this.lu.assertEquals(R.sort(strangelt, {5,1,3,2,4}), {1,2,3,4,5})
 end
 
 return TestFunc
