@@ -498,6 +498,15 @@ local _reduce = function(fn, acc, list)
 	return acc
 end
 
+--not pure
+local _shuffle = function(list)
+	if not list or #list == 0 then return list end
+	for i = 1, #list do
+		local rnd = math.random(i, #list)
+		list[i], list[rnd] = list[rnd], list[i]
+	end
+end
+
 -- ================================================
 -- ================ Util Functions ================
 -- ================================================ 
@@ -7248,28 +7257,26 @@ R.zipObj = _curry2(function(keys, values)
 end)
 
 --[[
-     Creates a new list out of the two supplied by applying the function to each
-     equally-positioned pair in the lists. The returned list is truncated to the
-     length of the shorter of the two input lists.
-     
-     @function
-
-     @since v0.1.0
-     @category List
-     @sig (a,b -> c) -> [a] -> [b] -> [c]
-     @param {Function} fn The function used to combine the two elements into one value.
-     @param {Array} list1 The first array to consider.
-     @param {Array} list2 The second array to consider.
-     @return {Array} The list made by combining same-indexed elements of `list1` and `list2`
-             using `fn`.
-     @example
-     
-          local f = (x, y) => {
-            -- ...
-          }
-          R.zipWith(f, [1, 2, 3], ['a', 'b', 'c'])
-          --> [f(1, 'a'), f(2, 'b'), f(3, 'c')]
-     @symb R.zipWith(fn, [a, b, c], [d, e, f]) = [fn(a, d), fn(b, e), fn(c, f)]
+	Creates a new list out of the two supplied by applying the function to each
+	equally-positioned pair in the lists. The returned list is truncated to the
+	length of the shorter of the two input lists.
+	
+	@function
+	@category Array
+	@sig (a,b -> c) -> [a] -> [b] -> [c]
+	@param {Function} fn The function used to combine the two elements into one value.
+	@param {Array} list1 The first array to consider.
+	@param {Array} list2 The second array to consider.
+	@return {Array} The list made by combining same-indexed elements of `list1` and `list2`
+			using `fn`.
+	@example
+	
+		local f = (x, y) => {
+		-- ...
+		}
+		R.zipWith(f, [1, 2, 3], ['a', 'b', 'c'])
+		--> [f(1, 'a'), f(2, 'b'), f(3, 'c')]
+	@symb R.zipWith(fn, [a, b, c], [d, e, f]) = [fn(a, d), fn(b, e), fn(c, f)]
 ]]
 R.zipWith = _curry3(function(fn, a, b)
 	local rv = {}
@@ -7282,27 +7289,71 @@ R.zipWith = _curry3(function(fn, a, b)
 	return rv
 end)
 
---new utils functions.
---!!notice, non-pure function ,it's always change the input list!!
-R.randrange = function(from, to)
-	if from > to then return math.floor(from) end
-	local delta = math.floor(to - from)
-	if delta < 1 then return math.floor(from) end
-	return math.floor(delta * math.random() + from)
-end
 
-R.shuffle = function(list)
-	if not list or #list == 0 then return list end
-	for i = 1, #list do
-		local rnd = math.random(i, #list)
-		list[i], list[rnd] = list[rnd], list[i]
-	end
+
+
+
+
+
+
+-- ===========================================
+-- ============ Random Functions =============
+-- ===========================================
+--[[
+	Normal stochastic algorithm | box muller algorithm
+	The algorithm generates a normal distributed random number with `mu` as the average and `sigma` as the standard deviation.
 	
-	return out
-end
+	@func
+	@category Random
+	@sig Number a => a -> a -> a
+	@param {Number} the average
+	@param {Number} the standard deviation
+	@return {Number} a normal distributed random number
+	@example	
+		R.boxMullerSampling(1, 1)
+]]
+R.boxMullerSampling = _curry2(function(mu, sigma)
+	local u = math.random()
+	local v = math.random()
+	local z0 = math.sqrt(-2 * math.log(u)) * math.cos(2 * math.pi * v)
+	--local z1 = math.sqrt(-2 * math.log(u)) * math.sin(2 * math.pi * v)
+	return mu + z0 * sigma
+end)
 
---pure function
-R.sample = _curry3(function(count, shuffle, list)
+--[[
+	Normal stochastic algorithm 
+	The algorithm generates a normal distributed random number with `min` `max` as the range and `sigma` as the standard deviation.
+	This algorithm based on box muller algorithm
+	
+	@func
+	@category Random
+	@sig Number a => a -> a -> a -> a
+	@param {Number} the min value
+	@param {Number} the max value
+	@param {Number} the standard deviation
+	@return {Number} a normal distributed random number
+	@example	
+		R.normalDistributed(0, 1, 0.7)
+]]
+R.normalDistributed = _curry3(function(min, max, sigma)
+	error("<lamda_error> normalDistributed:: not implement")
+end)
+
+
+--[[
+	Return some random values from the given list.
+	
+	@func
+	@category Random
+	@sig [a] -> [a]
+	@param {Number} sample count
+	@param {Array} the given list with non-zero length	
+	@return {Array} random values from the list
+	@example	
+		R.sample(3, {1, 2, 3, 4, 5}) --> 1, 3, 5
+		R.sample(1, {1, 2, 3, 4, 5}) --> 2
+]]
+R.sample = _curry2(function(count, list)
 	if #list == 0 or count <= 0 then
 		return nil
 	end
@@ -7321,30 +7372,63 @@ R.sample = _curry3(function(count, shuffle, list)
     else
         for i = 1, #list do
 			local p = (count - #out) / (#list - i + 1)
-			--print("check p ", count, #list, p)
             if p > math.random() then
                 table.insert(out, list[i])
 			end
         end
-        if shuffle then
-            R.shuffle(out)
-		end
 	end
 	
 	return out
 end)
 
---pure function
-R.choice = R.o(R.head, R.sample(1, false))
+--[[
+	Return a random value from the given list.
+	
+	@func
+	@category Random
+	@sig [a] -> a
+	@param {Array} the given list with non-zero length
+	@return {*} a random value from the list
+	@example	
+		R.choice({1, 2, 3, 4, 5}) --> 2
+		R.choice({1, 2, 3, 4, 5}) --> 4
+]]
+R.choice = R.o(R.head, R.sample(1))
 
--- Normal stochastic algorithm
--- box muller 算法， 生成一个以mu为平均值，sigma为标准偏差的正态分布随机数
-R.boxMullerSampling = function(mu, sigma)
-	local u = math.random()
-	local v = math.random()
-	local z0 = math.sqrt(-2 * math.log(u)) * math.cos(2 * math.pi * v)
-	--local z1 = math.sqrt(-2 * math.log(u)) * math.sin(2 * math.pi * v)
-	return mu + z0 * sigma
+--[[
+	Return a random value between `from`(inclusive) and `to`(inclusive) value
+	
+	@func
+	@category Random
+	@sig Integer a -> a -> a
+	@param {Integer} the min value
+	@param {Integer} the max value
+	@return {*} a random value
+	@example	
+		R.randrange(1, 100) --> 31
+]]
+R.randrange = _curry2(function(from, to)
+	if from > to then from, to = to, from end
+	local delta = math.floor(to - from)
+	if delta < 1 then return math.floor(from) end
+	return math.floor(delta * math.random() + from)
+end)
+
+--[[
+	Return a shuffled list
+	
+	@func
+	@category Random
+	@sig [a] -> [a]
+	@param {Array} the given list
+	@return {Array} the shuffled list
+	@example	
+		R.shuffle({1,2,3,4}) --> {4,1,3,2}
+]]
+R.shuffle = function(list)
+	local nl = R.clone(list)
+	_shuffle(nl)
+	return nl
 end
 
 --Not Implements
@@ -7382,8 +7466,5 @@ end
 -- R.or_
 -- R.repeat_
 -- R.not_
-
---Bugs
---R.flip may not curried correctly
 
 return R

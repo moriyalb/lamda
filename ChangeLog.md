@@ -57,7 +57,10 @@
 * R.forEach
   * now take object argument
   * the traverse function take `value` and `key` now
-  
+* R.sample
+	* remove `shuffle` config, the result is not guarantee whether shuffled or not
+* R.randrange
+	* exchange `from` and `to` if `from` is bigger than `to`
 
 ## Bug Fixed
 * curry function
