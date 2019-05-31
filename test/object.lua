@@ -43,4 +43,28 @@ function TestObject.test_dissocPath()
 	this.lu.assertEquals(obj_dissoced, obj)
 end
 
+function TestObject.test_fromPairs()
+	this.lu.assertEquals(R.fromPairs({{'a',1}, {'b', 2}}), {a = 1, b = 2})
+	this.lu.assertEquals(R.fromPairs({}), {})
+end
+
+function TestObject.test_has()
+	this.lu.assertTrue(R.has('a', {a = 1}))
+	this.lu.assertFalse(R.has('b', {a = 1}))
+	local has = R.has(R.__, {a = 1})
+	this.lu.assertTrue(has('a'))
+	this.lu.assertFalse(has('c'))
+end
+
+function TestObject.test_invert()
+	local raceResultsByFirstName = {
+		first = 'alice',
+		second = 'jake',
+		third = 'alice',
+	}
+	this.lu.assertEquals(R.invert(raceResultsByFirstName), {alice={"third", "first"}, jake={"second"}})
+	this.lu.assertEquals(R.invertObj(raceResultsByFirstName), {alice="first", jake="second"})
+	this.lu.assertEquals(R.invertObj({1,2,3}), {["1"]=1, ["2"]=2, ["3"]=3})
+end
+
 return TestObject

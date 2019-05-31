@@ -456,7 +456,7 @@ local _filter = function(fn, list)
 end
 
 local _has = function(prop, obj)
-	return type(obj) == "table" and obj[prop] ~= nil
+	return _isObject(obj) and not R.isNull(obj[prop])
 end
 
 local _identity = function(x)
@@ -647,6 +647,50 @@ end)
 ]]
 R.eqProps = _curry3(function(prop, obj1, obj2)
 	return R.equals(obj1[prop], obj2[prop])
+end)
+
+--[[
+	Returns `true` if the first argument is greater than the second `false`
+	otherwise.
+	
+	@func
+	@category Util
+	@sig Ord a => a -> a -> Boolean
+	@param {*} a
+	@param {*} b
+	@return {Boolean}
+	@see R.lt
+	@example	
+		R.gt(2, 1) --> true
+		R.gt(2, 2) --> false
+		R.gt(2, 3) --> false
+		R.gt('a', 'z') --> false
+		R.gt('z', 'a') --> true
+]]
+R.gt = _curry2(function (a, b)
+	return a > b
+end)
+
+--[[
+	Returns `true` if the first argument is greater than or equal to the second
+	`false` otherwise.
+	
+	@func
+	@category Util
+	@sig Ord a => a -> a -> Boolean
+	@param {Number} a
+	@param {Number} b
+	@return {Boolean}
+	@see R.lte
+	@example	
+		R.gte(2, 1) --> true
+		R.gte(2, 2) --> true
+		R.gte(2, 3) --> false
+		R.gte('a', 'z') --> false
+		R.gte('z', 'a') --> true
+]]
+R.gte = _curry2(function(a, b)
+	return a >= b
 end)
 
 --[[
@@ -1412,190 +1456,6 @@ R.both = _curry2(function(f, g)
 end)
 
 --[[
-	Makes a descending comparator function out of a function that returns a value
-	that can be compared with `<` and `>`.
-	
-	@func
-	@category Functional
-	@sig Ord b => (a -> b) -> a -> a -> Number
-	@param {Function} fn A function of arity one that returns a value that can be compared
-	@param {*} a The first item to be compared.
-	@param {*} b The second item to be compared.
-	@return {Number} `-1` if fn(a) > fn(b), `1` if fn(b) > fn(a), otherwise `0`
-	@see R.ascend
-	@example
-		local byAge = R.descend(R.prop('age'))
-		local people = {
-			{ name = 'Emma', age = 70 },
-			{ name = 'Peter', age = 78 },
-			{ name = 'Mikhail', age = 62 },
-		}
-		local peopleByYoungestFirst = R.sort(byAge, people) --> {{ name: 'Peter', age: 78 }, { name: 'Emma', age: 70 }, { name: 'Mikhail', age: 62 }}
-]]
-R.descend = _curry3(function(fn, a, b)
-	local aa = fn(a)
-	local bb = fn(b)
-	return aa > bb
-end)
-
---[[
-	A function wrapping calls to the two functions in an `or` operation,
-	returning the result of the first function if it is truth-y and the result
-	of the second function otherwise. Note that this is short-circuited,
-	meaning that the second function will not be invoked if the first returns a
-	truth-y value.    
-	
-	@func
-	@category Functional
-	@sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
-	@param {Function} f a predicate
-	@param {Function} g another predicate
-	@return {Function} a function that applies its arguments to `f` and `g` and `or`s their outputs together.
-	@see R.or_
-	@example	
-		local gt10 = function(x) return x > 10 end
-		local even = function(x) return x % 2 == 0 end
-		local f = R.either(gt10, even)
-		f(101) --> true
-		f(8) --> true
-]]
-R.either = _curry2(function(f, g)
-	return  function (...)
-		return f(...) or g(...)
-	end
-end)
-
---[[
-	Returns a new function much like the supplied one, except that the first two
-	arguments' order is reversed.
-	
-	@func
-	@category Functional
-	@sig (a -> b -> c -> ... -> z) -> (b -> a -> c -> ... -> z)
-	@param {Function} fn The function to invoke with its first two parameters reversed.
-	@return {*} The result of invoking `fn` with its first two parameters' order reversed.
-	@example
-		local mergeThree = function(a, b, c) return a .. b .. c end	
-		mergeThree('1','2','3') --> "123"	
-		R.flip(mergeThree)('1','2','3') --> "213"
-	@symb R.flip(f)(a, b, ...) = f(b, a, ...)
-]]
-R.flip = _curry1(function(fn)
-	return _curry2(function (a, b, ...)		
-		return fn(b, a, ...)
-	end)
-end)
-
---[[
-	Wraps a function of any arity (including nullary) in a function that accepts
-	exactly `n` parameters. Any extraneous parameters will not be passed to the
-	supplied function.
-	Max n is ten (error if greater than 10)
-	
-	@func
-	@category Functional
-	@sig Number -> (* -> a) -> (* -> a)
-	@param {Number} n The desired arity of the new function.
-	@param {Function} fn The function to wrap.
-	@return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
-			arity `n`.
-	@see R.binary, R.unary
-	@example
-		local takesTwoArgs = function (a, b, c, d)
-			return {a, b, c, d}
-		end
-	
-		takesTwoArgs.length --> 4
-		takesTwoArgs(1, 2, 3, 4) --> {1, 2, 3, 4}
-	
-		local takesOneArg = R.nAry(3, takesTwoArgs)
-		takesOneArg.length --> 3
-		-- Only `n` arguments are passed to the wrapped function
-		takesOneArg(1, 2, 3, 4) --> {1, 2, 3}
-	@symb R.nAry(0, f)(a, b) = f()
-	@symb R.nAry(1, f)(a, b) = f(a)
-	@symb R.nAry(2, f)(a, b) = f(a, b)
-]]
-R.nAry = _curry2(function(n, fn)
-	if n == 0 then
-		return function ()
-			return fn()
-		end
-	elseif n == 1 then
-		return function (a0)
-			return fn(a0)
-		end
-	elseif n == 2 then
-		return function (a0, a1)
-			return fn(a0, a1)
-		end
-	elseif n == 3 then
-		return function (a0, a1, a2)
-			return fn(a0, a1, a2)
-		end
-	elseif n == 4 then
-		return function (a0, a1, a2, a3)
-			return fn(a0, a1, a2, a3)
-		end
-	elseif n == 5 then
-		return function (a0, a1, a2, a3, a4)
-			return fn(a0, a1, a2, a3, a4)
-		end
-	elseif n == 6 then
-		return function (a0, a1, a2, a3, a4, a5)
-			return fn(a0, a1, a2, a3, a4, a5)
-		end
-	elseif n == 7 then
-		return function (a0, a1, a2, a3, a4, a5, a6)
-			return fn(a0, a1, a2, a3, a4, a5, a6)
-		end
-	elseif n == 8 then
-		return function (a0, a1, a2, a3, a4, a5, a6, a7)
-			return fn(a0, a1, a2, a3, a4, a5, a6, a7)
-		end
-	elseif n == 9 then
-		return function (a0, a1, a2, a3, a4, a5, a6, a7, a8)
-			return fn(a0, a1, a2, a3, a4, a5, a6, a7, a8)
-		end
-	elseif n == 10 then
-		return function (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
-			return fn(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
-		end
-	else
-		error('<lamda_error> nAry:: First argument to nAry must be a non-negative integer no greater than ten')
-	end
-end)
-
---[[
-	Wraps a function of any arity (including nullary) in a function that accepts
-	exactly 1 parameter. Any extraneous parameters will not be passed to the
-	supplied function.
-	
-	@func
-	@category Functional
-	@sig (* -> b) -> (a -> b)
-	@param {Function} fn The function to wrap.
-	@return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
-			arity 1.
-	@see R.binary, R.nAry
-	@example	
-		local takesTwoArgs = function(a, b) {
-			return {a, b}
-		}
-		takesTwoArgs.length --> 2
-		takesTwoArgs(1, 2) --> {1, 2}
-	
-		local takesOneArg = R.unary(takesTwoArgs)
-		takesOneArg.length --> 1
-		-- Only 1 argument is passed to the wrapped function
-		takesOneArg(1, 2) --> {1}
-	@symb R.unary(f)(a, b, c) = f(a)
-]]
-R.unary = _curry1(function(fn)
-	return R.nAry(1, fn)
-end)
-
---[[
 	Returns the result of calling its first argument with the remaining
 	arguments. This is occasionally useful as a converging function for
 	[`R.converge`](#converge): the first branch can produce a function while the
@@ -1785,6 +1645,259 @@ R.curry2 = _curry2
 ]]
 R.curry3 = _curry3
 
+--[[
+	Makes a descending comparator function out of a function that returns a value
+	that can be compared with `<` and `>`.
+	
+	@func
+	@category Functional
+	@sig Ord b => (a -> b) -> a -> a -> Number
+	@param {Function} fn A function of arity one that returns a value that can be compared
+	@param {*} a The first item to be compared.
+	@param {*} b The second item to be compared.
+	@return {Number} `-1` if fn(a) > fn(b), `1` if fn(b) > fn(a), otherwise `0`
+	@see R.ascend
+	@example
+		local byAge = R.descend(R.prop('age'))
+		local people = {
+			{ name = 'Emma', age = 70 },
+			{ name = 'Peter', age = 78 },
+			{ name = 'Mikhail', age = 62 },
+		}
+		local peopleByYoungestFirst = R.sort(byAge, people) --> {{ name: 'Peter', age: 78 }, { name: 'Emma', age: 70 }, { name: 'Mikhail', age: 62 }}
+]]
+R.descend = _curry3(function(fn, a, b)
+	local aa = fn(a)
+	local bb = fn(b)
+	return aa > bb
+end)
+
+--[[
+	A function wrapping calls to the two functions in an `or` operation,
+	returning the result of the first function if it is truth-y and the result
+	of the second function otherwise. Note that this is short-circuited,
+	meaning that the second function will not be invoked if the first returns a
+	truth-y value.    
+	
+	@func
+	@category Functional
+	@sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
+	@param {Function} f a predicate
+	@param {Function} g another predicate
+	@return {Function} a function that applies its arguments to `f` and `g` and `or`s their outputs together.
+	@see R.or_
+	@example	
+		local gt10 = function(x) return x > 10 end
+		local even = function(x) return x % 2 == 0 end
+		local f = R.either(gt10, even)
+		f(101) --> true
+		f(8) --> true
+]]
+R.either = _curry2(function(f, g)
+	return  function (...)
+		return f(...) or g(...)
+	end
+end)
+
+--[[
+	Returns a new function much like the supplied one, except that the first two
+	arguments' order is reversed.
+	
+	@func
+	@category Functional
+	@sig (a -> b -> c -> ... -> z) -> (b -> a -> c -> ... -> z)
+	@param {Function} fn The function to invoke with its first two parameters reversed.
+	@return {*} The result of invoking `fn` with its first two parameters' order reversed.
+	@example
+		local mergeThree = function(a, b, c) return a .. b .. c end	
+		mergeThree('1','2','3') --> "123"	
+		R.flip(mergeThree)('1','2','3') --> "213"
+	@symb R.flip(f)(a, b, ...) = f(b, a, ...)
+]]
+R.flip = _curry1(function(fn)
+	return _curry2(function (a, b, ...)		
+		return fn(b, a, ...)
+	end)
+end)
+
+--[[
+	A function that does nothing but return the parameter supplied to it. Good
+	as a default or placeholder function.
+	
+	@func
+	@category Function
+	@sig a -> a
+	@param {*} x The value to return.
+	@return {*} The input value, `x`.
+	@example
+		R.identity(1) --> 1	
+		local obj = {}
+		R.identity(obj) == obj --> true
+	@symb R.identity(a) = a
+]]
+R.identity = _curry1(_identity)
+
+--[[
+	Creates a function that will process either the `onTrue` or the `onFalse`
+	function depending upon the result of the `condition` predicate.
+	
+	@func
+	@category Functional
+	@sig (*... -> Boolean) -> (*... -> *) -> (*... -> *) -> (*... -> *)
+	@param {Function} condition A predicate function
+	@param {Function} onTrue A function to invoke when the `condition` evaluates to a truthy value.
+	@param {Function} onFalse A function to invoke when the `condition` evaluates to a falsy value.
+	@return {Function} A new unary function that will process either the `onTrue` or the `onFalse`
+					function depending upon the result of the `condition` predicate.
+	@see R.unless, R.when
+	@example	
+		local incCount = R.ifElse(
+			R.has('count'),
+			R.assoc('count', 'null'),
+			R.assoc('count', 1)
+		)
+		print(R.toString(incCount({})))            --> { count: 1 }
+		print(R.toString(incCount({ count = 1 }))) --> { count: 'null' }
+]]
+R.ifElse = _curry3(function(condition, onTrue, onFalse)
+	return function (...)
+		local args = {...}
+		local toCall = R.clone(args)
+		return condition(unpack(args)) and onTrue(unpack(toCall)) or onFalse(unpack(toCall))
+	end
+end)
+
+--[[
+	juxt applies a list of functions to a list of values.
+	
+	@func
+	@category Functional
+	@sig [(a, b, ..., m) -> n] -> ((a, b, ..., m) -> [n])
+	@param {Array} fns An array of functions
+	@return {Function} A function that returns a list of values after applying each of the original `fns` to its parameters.
+	@see R.applySpec
+	@example     
+		local getRange = R.juxt({math.min, math.max})
+		getRange(3, 4, 9, -3) --> {-3, 9}
+
+	@symb R.juxt([f, g, h])(a, b) = [f(a, b), g(a, b), h(a, b)]
+]]
+R.juxt = _curry1(function(fns)
+	return R.converge(function (...)
+		return {...}
+	end, fns)
+end)
+
+--[[
+	Wraps a function of any arity (including nullary) in a function that accepts
+	exactly `n` parameters. Any extraneous parameters will not be passed to the
+	supplied function.
+	Max n is ten (error if greater than 10)
+	
+	@func
+	@category Functional
+	@sig Number -> (* -> a) -> (* -> a)
+	@param {Number} n The desired arity of the new function.
+	@param {Function} fn The function to wrap.
+	@return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
+			arity `n`.
+	@see R.binary, R.unary
+	@example
+		local takesTwoArgs = function (a, b, c, d)
+			return {a, b, c, d}
+		end
+	
+		takesTwoArgs.length --> 4
+		takesTwoArgs(1, 2, 3, 4) --> {1, 2, 3, 4}
+	
+		local takesOneArg = R.nAry(3, takesTwoArgs)
+		takesOneArg.length --> 3
+		-- Only `n` arguments are passed to the wrapped function
+		takesOneArg(1, 2, 3, 4) --> {1, 2, 3}
+	@symb R.nAry(0, f)(a, b) = f()
+	@symb R.nAry(1, f)(a, b) = f(a)
+	@symb R.nAry(2, f)(a, b) = f(a, b)
+]]
+R.nAry = _curry2(function(n, fn)
+	if n == 0 then
+		return function ()
+			return fn()
+		end
+	elseif n == 1 then
+		return function (a0)
+			return fn(a0)
+		end
+	elseif n == 2 then
+		return function (a0, a1)
+			return fn(a0, a1)
+		end
+	elseif n == 3 then
+		return function (a0, a1, a2)
+			return fn(a0, a1, a2)
+		end
+	elseif n == 4 then
+		return function (a0, a1, a2, a3)
+			return fn(a0, a1, a2, a3)
+		end
+	elseif n == 5 then
+		return function (a0, a1, a2, a3, a4)
+			return fn(a0, a1, a2, a3, a4)
+		end
+	elseif n == 6 then
+		return function (a0, a1, a2, a3, a4, a5)
+			return fn(a0, a1, a2, a3, a4, a5)
+		end
+	elseif n == 7 then
+		return function (a0, a1, a2, a3, a4, a5, a6)
+			return fn(a0, a1, a2, a3, a4, a5, a6)
+		end
+	elseif n == 8 then
+		return function (a0, a1, a2, a3, a4, a5, a6, a7)
+			return fn(a0, a1, a2, a3, a4, a5, a6, a7)
+		end
+	elseif n == 9 then
+		return function (a0, a1, a2, a3, a4, a5, a6, a7, a8)
+			return fn(a0, a1, a2, a3, a4, a5, a6, a7, a8)
+		end
+	elseif n == 10 then
+		return function (a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+			return fn(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+		end
+	else
+		error('<lamda_error> nAry:: First argument to nAry must be a non-negative integer no greater than ten')
+	end
+end)
+
+--[[
+	Wraps a function of any arity (including nullary) in a function that accepts
+	exactly 1 parameter. Any extraneous parameters will not be passed to the
+	supplied function.
+	
+	@func
+	@category Functional
+	@sig (* -> b) -> (a -> b)
+	@param {Function} fn The function to wrap.
+	@return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
+			arity 1.
+	@see R.binary, R.nAry
+	@example	
+		local takesTwoArgs = function(a, b) {
+			return {a, b}
+		}
+		takesTwoArgs.length --> 2
+		takesTwoArgs(1, 2) --> {1, 2}
+	
+		local takesOneArg = R.unary(takesTwoArgs)
+		takesOneArg.length --> 1
+		-- Only 1 argument is passed to the wrapped function
+		takesOneArg(1, 2) --> {1}
+	@symb R.unary(f)(a, b, c) = f(a)
+]]
+R.unary = _curry1(function(fn)
+	return R.nAry(1, fn)
+end)
+
+
 -- ================================================
 -- ================ Math Functions ================
 -- ================================================
@@ -1919,6 +2032,20 @@ R.divide = _curry2(function(a, b)
 	end
 	return a / b
 end)
+
+--[[
+	Increments its argument.
+	
+	@func
+	@category Math
+	@sig Number -> Number
+	@param {Number} n
+	@return {Number} n + 1
+	@see R.dec
+	@example
+		R.inc(42) --> 43
+]]
+R.inc = R.add(1)
 
 -- ================================================
 -- ================ Array Functions ===============
@@ -2519,6 +2646,223 @@ R.forEach = _curry2(function(fn, list)
 end)
 
 --[[
+	Takes a list and returns a list of lists where each sublist's elements are
+	all satisfied pairwise comparison according to the provided function.
+	Only adjacent elements are passed to the comparison function.
+	
+	@func
+	@category Array
+	@sig ((a, a) → Boolean) → [a] → [ [a] ]
+	@param {Function} fn Function for determining whether two given (adjacent)
+		elements should be in the same group
+	@param {Array} list The array to group. Also accepts a string, which will be
+		treated as a list of characters.
+	@return {List} A list that contains sublists of elements,
+			whose concatenations are equal to the original list.
+	@example	
+		print(R.toString(R.groupWith(R.equals, {0, 1, 1, 2, 3, 5, 8, 13, 21})))
+		--> {{0}, {1, 1}, {2}, {3}, {5}, {8}, {13}, {21}}
+		print(R.toString(R.groupWith(function(a, b) return a + 1 == b end, {0, 1, 1, 2, 3, 5, 8, 13, 21})))
+		--> {{0, 1}, {1, 2, 3}, {5}, {8}, {13}, {21}}
+		print(R.toString(R.groupWith(function(a, b) return a % 2 == b % 2 end, {0, 1, 1, 2, 3, 5, 8, 13, 21})))
+		--> {{0}, {1, 1}, {2}, {3, 5}, {8}, {13, 21}}
+		print(R.toString(R.groupWith(R.eqBy(R.contains(R.__, "aeiou")), 'aestiou')))
+		--> {'ae', 'st', 'iou'}
+]]
+R.groupWith = _curry2(function (fn, list)
+	local res = {}
+	if _isString(list) then
+		local idx = 1
+		local len = string.len(list)
+		while idx <= len do
+			local nextidx = idx + 1
+			while nextidx <= len and fn(string.sub(list,nextidx - 1,nextidx-1), string.sub(list, nextidx, nextidx)) do
+				nextidx = nextidx + 1
+			end
+			res[#res + 1] = string.sub(list, idx, nextidx - 1)
+			idx = nextidx
+		end
+	else
+		local idx = 1
+		local len = #list
+		while idx <= len do
+			local nextidx = idx + 1
+			while nextidx <= len and fn(list[nextidx - 1], list[nextidx]) do
+				nextidx = nextidx + 1
+			end
+			res[#res + 1] = R.slice(idx, nextidx, list)
+			idx = nextidx
+		end
+	end
+	return res
+end)
+
+--[[
+	Returns the position of the first occurrence of an item in an array, or -1
+	if the item is not included in the array. [`R.equals`](#equals) is used to
+	determine equality.
+	
+	@func
+	@category Array
+	@category String
+	@sig a -> [a] -> Number
+	@param {*} target The item to find.
+	@param {Array} xs The array to search in.
+	@return {Number} the index of the target, or -1 if the target is not found.
+	@see R.findIndex, R.lastIndexOf
+	@example	
+		R.indexOf(3, {1,2,3,4}) --> 3
+		R.indexOf('e', "abcd")  --> -1
+]]
+R.indexOf = _curry2(function(target, xs)
+	return _indexOf(xs, target, 1)
+end)
+
+--[[
+	Takes a predicate `pred`, a list `xs`, and a list `ys`, and returns a list
+	`xs'` comprising each of the elements of `xs` which is equal to one or more
+	elements of `ys` according to `pred`.
+	
+	`pred` must be a binary function expecting an element from each list.
+	
+	`xs`, `ys`, and `xs'` are treated as sets, semantically, so ordering should
+	not be significant, but since `xs'` is ordered the implementation guarantees
+	that its values are in the same order as they appear in `xs`. Duplicates are
+	not removed, so `xs'` may contain duplicates if `xs` contains duplicates.
+	
+	@func
+	@category Array
+	@sig (a -> b -> Boolean) -> [a] -> [b] -> [a]
+	@param {Function} pred
+	@param {Array} xs
+	@param {Array} ys
+	@return {Array}
+	@see R.intersection
+	@example	
+		R.innerJoin(
+			function(data, id) return data.id == id end,
+			{{id = 824, name = 'Richie Furay'},
+				{id = 956, name = 'Dewey Martin'},
+				{id = 313, name = 'Bruce Palmer'},
+				{id = 456, name = 'Stephen Stills'},
+				{id = 177, name = 'Neil Young'}},
+			{177, 456, 999}
+		) --> {{name = "Stephen Stills",id = 456},{name = "Neil Young",id = 177}}
+]]
+R.innerJoin = _curry3(function(pred, xs, ys)
+	return _filter(function (x)
+		return _containsWith(pred, x, ys)
+	end, xs)
+end)
+
+--[[
+	Inserts the supplied element into the list, at the specified `index`. _Note that
+	this is not destructive_: it returns a copy of the list with the changes.
+	<small>No lists have been harmed in the application of this function.</small>
+	
+	@func
+	@category Array
+	@sig Number -> a -> [a] -> [a]
+	@param {Number} index The position to insert the element
+	@param {*} elt The element to insert into the Array
+	@param {Array} list The list to insert into
+	@return {Array} A new Array with `elt` inserted at `index`.
+	@example     
+		R.insert(2, 'x', {1,2,3,4}) --> {1,2,'x',3,4}
+]]
+R.insert = _curry3(function(idx, elt, list)
+	idx = idx <= #list and idx > 0 and idx or #list + 1
+	local result = R.slice(1, idx + 1, list)
+	result[#result + 1] = elt
+	for i = idx + 1, #list do
+		result[#result + 1] = list[i]
+	end
+	return result
+end)
+
+
+--[[
+	Inserts the sub-list into the list, at the specified `index`. _Note that this is not
+	destructive_: it returns a copy of the list with the changes.
+	<small>No lists have been harmed in the application of this function.</small>
+	
+	@func
+	@category Array
+	@sig Number -> [a] -> [a] -> [a]
+	@param {Number} index The position to insert the sub-list
+	@param {Array} elts The sub-list to insert into the Array
+	@param {Array} list The list to insert the sub-list into
+	@return {Array} A new Array with `elts` inserted starting at `index`.
+	@example	
+		R.insertAll(2, {'x','y','z'}, {1,2,3,4}) --> {1,2,'x','y','z',3,4}
+]]
+R.insertAll = _curry3(function(idx, elts, list)
+	idx = idx <= #list and idx > 0 and idx or #list + 1
+	local result = R.slice(1, idx + 1, list)
+	for _,v in ipairs(elts) do
+		result[#result + 1] = v
+	end
+	for i = idx + 1, #list do
+		result[#result + 1] = list[i]
+	end
+	return result
+end)
+
+--[[
+	Creates a new list with the separator interposed between elements.
+	
+	@func
+	@category Array
+	@sig a -> [a] -> [a]
+	@param {*} separator The element to add to the list.
+	@param {Array} list The list to be interposed.
+	@return {Array} The new list.
+	@example     
+		R.intersperse('n', {'ba', 'a', 'a'}) --> {'ba', 'n', 'a', 'n', 'a'}
+]]
+R.intersperse = _curry2(function(separator, list)
+	local out = {}
+	local idx = 1
+	local length = #list
+	while idx <= length do
+		if idx == length then
+			out[#out + 1] = list[idx]
+		else
+			out[#out + 1] = list[idx]
+			out[#out + 1] = separator
+		end
+		idx = idx + 1
+	end
+	return out
+end)
+
+--[[
+	Returns the number of elements in the array by returning `list.length`.
+	
+	@func
+	@category Array
+	@sig [a] -> Number
+	@param {Array} list The array to inspect.
+	@return {Number} The length of the array.
+	@example	
+		R.length({}) --> 0
+		R.length({1, 2, 3}) --> 3
+]]
+R.length = _curry1(function(v)
+	if type(v) == "table" then
+		return _safe_size(v)
+	elseif type(v) == "string" then
+		return string.len(v)
+	else
+		return 0
+	end
+end)
+--[[
+	@alias length
+]]
+R.size = R.length
+
+--[[
 	Returns the elements of the given list or string from `fromIndex` (inclusive) to `toIndex` (exclusive).	
 	if `fromIndex` is zero then it will set to 1(from the first element)
 	if `toIndex` is zero then it will set to length + 1(include the last element)
@@ -2759,6 +3103,122 @@ R.dissocPath = _curry2(function(path, obj)
 end)
 
 --[[
+	Creates a new object from a list key-value pairs. If a key appears in
+	multiple pairs, the rightmost pair is included in the object.
+	
+	@func
+	@category Object
+	@sig {{k,v}} -> {k: v}
+	@param {Array} pairs An array of two-element arrays that will be the keys and values of the output object.
+	@return {Object} The object made by pairing up `keys` and `values`.
+	@see R.toPairs, R.pair
+	@example	
+		R.fromPairs({{'a', 1}, {'b', 2}, {'c', 3}}) --> {a = 1, b = 2, c = 3}
+]]
+R.fromPairs = _curry1(function(pairs)
+	local result = {}
+	local idx = 1
+	while idx <= #pairs do
+		result[pairs[idx][1]] = pairs[idx][2]
+		idx = idx + 1
+	end
+	return result
+end)
+
+--[[
+	Returns whether or not an object has an own property with the specified name
+	
+	@func
+	@category Object
+	@sig s -> {s: x} -> Boolean
+	@param {String} prop The name of the property to check for.
+	@param {Object} obj The object to query.
+	@return {Boolean} Whether the property exists.
+	@example
+		local hasName = R.has('name')
+		hasName({name = 'alice'})   --> true
+		hasName({name = 'bob'})     --> true
+		hasName({})                --> false
+	
+		local point = {x = 0, y = 0}
+		local pointHas = R.has(R.__, point)
+		pointHas('x')  --> true
+		pointHas('y')  --> true
+		pointHas('z')  --> false
+]]
+R.has = _curry2(_has)
+
+--[[
+	Same as [`R.invertObj`](#invertObj), however this accounts for objects with
+	duplicate values by putting the values into an array.
+	
+	@func
+	@category Object
+	@sig {s: x} -> {x: [ s, ... ]}
+	@param {Object} obj The object or array to invert
+	@return {Object} out A new object with keys in an array.
+	@see R.invertObj
+	@example	
+		local raceResultsByFirstName = {
+			first = 'alice',
+			second = 'jake',
+			third = 'alice',
+		}
+		R.invert(raceResultsByFirstName) --> { 'alice': {'first', 'third'}, 'jake':{'second'} }
+]]
+R.invert = _curry1(function(obj)	
+	local out = {}
+	for k,v in pairs(obj) do
+		v = tostring(v)		
+		if _has(v, out) then
+			local len = R.length(out[v])
+			out[v][len + 1] = k
+		else
+			out[v] = {k}
+		end
+	end
+	return out
+end)
+
+--[[
+	Returns a new object with the keys of the given object as values, and the
+	values of the given object, which are coerced to strings, as keys. Note
+	that the last key found is preferred when handling the same value.
+	
+	@func
+	@category Object
+	@sig {s: x} -> {x: s}
+	@param {Object} obj The object or array to invert
+	@return {Object} out A new object
+	@see R.invert
+	@example
+		local raceResults = {
+			first = 'alice',
+			second = 'jake'
+		}
+		R.invertObj(raceResults) --> { 'alice' = 'first', 'jake' = 'second' }
+	
+		-- Alternatively:
+		local raceResults = {'alice', 'jake'}
+		R.invertObj(raceResults) --> { alice = 1, jake = 2 }
+]]
+R.invertObj = _curry1(function(obj)
+	local out = {}
+	if _isArray(obj) then		
+		for k,v in ipairs(obj) do			
+			v = tostring(v)
+			out[v] = k
+		end
+	else
+		for k,v in pairs(obj) do	
+			v = tostring(v)
+			out[v] = k
+		end
+	end
+	return out
+end)
+
+--[[
 	Returns a list containing the names of all the enumerable own properties of
 	the supplied object.	
 	
@@ -2830,697 +3290,72 @@ R.values = _curry1(function(obj)
 	return values
 end)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-- ==================================================
+-- ================ String Functions ================
+-- ==================================================
 --[[
-	Creates a new object from a list key-value pairs. If a key appears in
-	multiple pairs, the rightmost pair is included in the object.
+	Returns a string made by inserting the `separator` between each element and
+	concatenating all the elements into a single string.
 	
 	@func
-
-	@category Array
-	@sig {{k,v}} -> {k: v}
-	@param {Array} pairs An array of two-element arrays that will be the keys and values of the output object.
-	@return {Object} The object made by pairing up `keys` and `values`.
-	@see R.toPairs, R.pair
+	@category String
+	@sig String -> [a] -> String
+	@param {Number|String} separator The string used to separate the elements.
+	@param {Array} xs The elements to join into a string.
+	@return {String} str The string made by concatenating `xs` with `separator`.
+	@see R.split
 	@example	
-		R.fromPairs({{'a', 1}, {'b', 2}, {'c', 3}}) --> {a = 1, b = 2, c = 3}
-]]
-R.fromPairs = _curry1(function(pairs)
-	local result = {}
-	local idx = 1
-	while idx <= #pairs do
-		result[pairs[idx][1]] = pairs[idx][2]
-		idx = idx + 1
-	end
-	return result
-end)
-
-
---[[
-     Takes a list and returns a list of lists where each sublist's elements are
-     all satisfied pairwise comparison according to the provided function.
-     Only adjacent elements are passed to the comparison function.
-     
-     @func
-
-     @category List
-     @sig ((a, a) → Boolean) → [a] → [ [a] ]
-     @param {Function} fn Function for determining whether two given (adjacent)
-            elements should be in the same group
-     @param {Array} list The array to group. Also accepts a string, which will be
-            treated as a list of characters.
-     @return {List} A list that contains sublists of elements,
-             whose concatenations are equal to the original list.
-     @example
-     
-		print(R.toString(R.groupWith(R.equals, {0, 1, 1, 2, 3, 5, 8, 13, 21})))
-		--> {{0}, {1, 1}, {2}, {3}, {5}, {8}, {13}, {21}}
-		print(R.toString(R.groupWith(function(a, b) return a + 1 == b end, {0, 1, 1, 2, 3, 5, 8, 13, 21})))
-		--> {{0, 1}, {1, 2, 3}, {5}, {8}, {13}, {21}}
-		print(R.toString(R.groupWith(function(a, b) return a % 2 == b % 2 end, {0, 1, 1, 2, 3, 5, 8, 13, 21})))
-		--> {{0}, {1, 1}, {2}, {3, 5}, {8}, {13, 21}}
-		print(R.toString(R.groupWith(R.eqBy(R.contains(R.__, "aeiou")), 'aestiou')))
-		--> {'ae', 'st', 'iou'}
-]]
-R.groupWith = _curry2(function (fn, list)
-	local res = {}
-	if type(list) == "string" then
-		local idx = 1
-		local len = string.len(list)
-		while idx <= len do
-			local nextidx = idx + 1
-			while nextidx <= len and fn(string.sub(list,nextidx - 1,nextidx-1), string.sub(list, nextidx, nextidx)) do
-				nextidx = nextidx + 1
-			end
-			res[#res + 1] = string.sub(list, idx, nextidx - 1)
-			idx = nextidx
-		end
-	else
-		local idx = 1
-		local len = #list
-		while idx <= len do
-			local nextidx = idx + 1
-			while nextidx <= len and fn(list[nextidx - 1], list[nextidx]) do
-				nextidx = nextidx + 1
-			end
-			res[#res + 1] = R.slice(idx, nextidx - 1, list)
-			idx = nextidx
-		end
-	end
-	return res
-end)
-
-
---[[
-     Returns `true` if the first argument is greater than the second `false`
-     otherwise.
-     
-     @func
-
-     @category Relation
-     @sig Ord a => a -> a -> Boolean
-     @param {*} a
-     @param {*} b
-     @return {Boolean}
-     @see R.lt
-     @example
-     
-          R.gt(2, 1) --> true
-          R.gt(2, 2) --> false
-          R.gt(2, 3) --> false
-          R.gt('a', 'z') --> false
-          R.gt('z', 'a') --> true
-]]
-R.gt = _curry2(function (a, b)
-	return a > b
-end)
-
-
---[[
-     Returns `true` if the first argument is greater than or equal to the second
-     `false` otherwise.
-     
-     @func
-
-     @category Relation
-     @sig Ord a => a -> a -> Boolean
-     @param {Number} a
-     @param {Number} b
-     @return {Boolean}
-     @see R.lte
-     @example
-     
-          R.gte(2, 1) --> true
-          R.gte(2, 2) --> true
-          R.gte(2, 3) --> false
-          R.gte('a', 'z') --> false
-          R.gte('z', 'a') --> true
-]]
-R.gte = _curry2(function(a, b)
-	return a >= b
-end)
-
-
---[[
-     Returns whether or not an object has an own property with the specified name
-     
-     @func
-
-     @category Object
-     @sig s -> {s: x} -> Boolean
-     @param {String} prop The name of the property to check for.
-     @param {Object} obj The object to query.
-     @return {Boolean} Whether the property exists.
-     @example
-     
-          local hasName = R.has('name')
-          hasName({name = 'alice'})   --> true
-          hasName({name = 'bob'})     --> true
-          hasName({})                --> false
-     
-          local point = {x = 0, y = 0}
-          local pointHas = R.has(R.__, point)
-          pointHas('x')  --> true
-          pointHas('y')  --> true
-          pointHas('z')  --> false
-]]
-R.has = _curry2(_has)
-
---[[
-     A function that does nothing but return the parameter supplied to it. Good
-     as a default or placeholder function.
-     
-     @func
-
-     @since v0.1.0
-     @category Function
-     @sig a -> a
-     @param {*} x The value to return.
-     @return {*} The input value, `x`.
-     @example
-     
-          R.identity(1) --> 1
-     
-          local obj = {}
-          R.identity(obj) == obj --> true
-     @symb R.identity(a) = a
-]]
-R.identity = _curry1(_identity)
-
-
---[[
-     Creates a function that will process either the `onTrue` or the `onFalse`
-     function depending upon the result of the `condition` predicate.
-     
-     @func
-
-     @category Logic
-     @sig (*... -> Boolean) -> (*... -> *) -> (*... -> *) -> (*... -> *)
-     @param {Function} condition A predicate function
-     @param {Function} onTrue A function to invoke when the `condition` evaluates to a truthy value.
-     @param {Function} onFalse A function to invoke when the `condition` evaluates to a falsy value.
-     @return {Function} A new unary function that will process either the `onTrue` or the `onFalse`
-                        function depending upon the result of the `condition` predicate.
-     @see R.unless, R.when
-     @example
-     
-		local incCount = R.ifElse(
-			R.has('count'),
-			R.assoc('count', 'null'),
-			R.assoc('count', 1)
-		)
-		print(R.toString(incCount({})))            --> { count: 1 }
-		print(R.toString(incCount({ count = 1 }))) --> { count: 'null' }
-]]
-R.ifElse = _curry3(function(condition, onTrue, onFalse)
-	return function (...)
-		return condition(...) and onTrue(...) or onFalse(...)
-	end
-end)
-
---[[
-     Increments its argument.
-     
-     @func
-
-     @category Math
-     @sig Number -> Number
-     @param {Number} n
-     @return {Number} n + 1
-     @see R.dec
-     @example
-     
-          R.inc(42) --> 43
-]]
-R.inc = R.add(1)
-
---[[
-     Returns the position of the first occurrence of an item in an array, or -1
-     if the item is not included in the array. [`R.equals`](#equals) is used to
-     determine equality.
-     
-     @func
-
-     @category List
-     @sig a -> [a] -> Number
-     @param {*} target The item to find.
-     @param {Array} xs The array to search in.
-     @return {Number} the index of the target, or -1 if the target is not found.
-     @see R.lastIndexOf
-     @example
-     
-          R.indexOf(3, {1,2,3,4}) --> 3
-          R.indexOf(10, {1,2,3,4}) --> -1
-]]
-R.indexOf = _curry2(function(target, xs)
-	return _indexOf(xs, target, 1)
-end)
-
---[[
-     Takes a predicate `pred`, a list `xs`, and a list `ys`, and returns a list
-     `xs'` comprising each of the elements of `xs` which is equal to one or more
-     elements of `ys` according to `pred`.
-     
-     `pred` must be a binary function expecting an element from each list.
-     
-     `xs`, `ys`, and `xs'` are treated as sets, semantically, so ordering should
-     not be significant, but since `xs'` is ordered the implementation guarantees
-     that its values are in the same order as they appear in `xs`. Duplicates are
-     not removed, so `xs'` may contain duplicates if `xs` contains duplicates.
-     
-     @func
-
-     @since v0.24.0
-     @category Relation
-     @sig (a -> b -> Boolean) -> [a] -> [b] -> [a]
-     @param {Function} pred
-     @param {Array} xs
-     @param {Array} ys
-     @return {Array}
-     @see R.intersection
-     @example
-     
-          R.innerJoin(
-            function(data, id) return data.id == id end,
-            {{id = 824, name = 'Richie Furay'},
-             {id = 956, name = 'Dewey Martin'},
-             {id = 313, name = 'Bruce Palmer'},
-             {id = 456, name = 'Stephen Stills'},
-             {id = 177, name = 'Neil Young'}},
-            {177, 456, 999}
-          )
-          --> {{name = "Stephen Stills",id = 456},{name = "Neil Young",id = 177}}
-]]
-R.innerJoin = _curry3(function(pred, xs, ys)
-	return _filter(function (x)
-		return _containsWith(pred, x, ys)
-	end, xs)
-end)
-
---[[
-     Inserts the supplied element into the list, at the specified `index`. _Note that
-
-     this is not destructive_: it returns a copy of the list with the changes.
-     <small>No lists have been harmed in the application of this function.</small>
-     
-     @func
-
-     @category List
-     @sig Number -> a -> [a] -> [a]
-     @param {Number} index The position to insert the element
-     @param {*} elt The element to insert into the Array
-     @param {Array} list The list to insert into
-     @return {Array} A new Array with `elt` inserted at `index`.
-     @example
-     
-          R.insert(2, 'x', {1,2,3,4}) --> {1,2,'x',3,4}
-]]
-R.insert = _curry3(function(idx, elt, list)
-	idx = idx <= #list and idx > 0 and idx or #list + 1
-	local result = R.slice(1, idx, list)
-	result[#result + 1] = elt
-	for i = idx + 1, #list do
-		result[#result + 1] = list[i]
-	end
-	return result
-end)
-
-
---[[
-     Inserts the sub-list into the list, at the specified `index`. _Note that this is not
-     destructive_: it returns a copy of the list with the changes.
-     <small>No lists have been harmed in the application of this function.</small>
-     
-     @func
-
-     @category List
-     @sig Number -> [a] -> [a] -> [a]
-     @param {Number} index The position to insert the sub-list
-     @param {Array} elts The sub-list to insert into the Array
-     @param {Array} list The list to insert the sub-list into
-     @return {Array} A new Array with `elts` inserted starting at `index`.
-     @example
-     
-          R.insertAll(2, {'x','y','z'}, {1,2,3,4}) --> {1,2,'x','y','z',3,4}
-]]
-R.insertAll = _curry3(function(idx, elts, list)
-	idx = idx <= #list and idx > 0 and idx or #list + 1
-	local result = R.slice(1, idx, list)
-	for _,v in ipairs(elts) do
-		result[#result + 1] = v
-	end
-	for i = idx + 1, #list do
-		result[#result + 1] = list[i]
-	end
-	return result
-end)
-
-
---[[
-     Creates a new list with the separator interposed between elements.
-     
-     @func
-
-     @category List
-     @sig a -> [a] -> [a]
-     @param {*} separator The element to add to the list.
-     @param {Array} list The list to be interposed.
-     @return {Array} The new list.
-     @example
-     
-          R.intersperse('n', {'ba', 'a', 'a'}) --> {'ba', 'n', 'a', 'n', 'a'}
-]]
-R.intersperse = _curry2(function(separator, list)
-	local out = {}
-	local idx = 1
-	local length = #list
-	while idx <= length do
-		if idx == length then
-			out[#out + 1] = list[idx]
-		else
-			out[#out + 1] = list[idx]
-			out[#out + 1] = separator
-		end
-		idx = idx + 1
-	end
-	return out
-end)
-
---[[
-     Combines two lists into a set (i.e. no duplicates) composed of those
-     elements common to both lists. Duplication is determined according to the
-     value returned by applying the supplied predicate to two list elements.
-     
-     @func
-
-     @category Relation
-     @sig ((a, a) -> Boolean) -> [a] -> [a] -> [a]
-     @param {Function} pred A predicate function that determines whether
-            the two supplied elements are equal.
-     @param {Array} list1 One list of items to compare
-     @param {Array} list2 A second list of items to compare
-     @return {Array} A new list containing those elements common to both lists.
-     @see R.innerJoin
-     @deprecated since v0.24.0
-     @example
-     
-          local buffaloSpringfield = {
-            {id = 824, name =  'Richie Furay'},
-            {id = 956, name =  'Dewey Martin'},
-            {id = 313, name =  'Bruce Palmer'},
-            {id = 456, name =  'Stephen Stills'},
-            {id = 177, name =  'Neil Young'}
-          }
-          local csny = {
-            {id = 204, name =  'David Crosby'},
-            {id = 456, name =  'Stephen Stills'},
-            {id = 539, name =  'Graham Nash'},
-            {id = 177, name =  'Neil Young'}
-          }
-     
-          R.intersectionWith(R.eqBy(R.prop('id')), buffaloSpringfield, csny)
-          --> [{id = 456, name =  'Stephen Stills'}, {id = 177, name =  'Neil Young'}]
-]]
-R.intersectionWith = _curry3(function(pred, list1, list2)
-	local lookupList, filteredList
-	if #list1 >  #list2 then
-		lookupList = list1
-		filteredList = list2
-	else
-		lookupList = list2
-		filteredList = list1
-	end
-	local results = {}
-	local idx = 1
-	while idx <= #filteredList do
-		if _containsWith(pred, filteredList[idx], lookupList) then
-			results[#results + 1] = filteredList[idx]
-		end
-		idx = idx + 1
-	end
-	return R.uniqWith(pred, results)
-end)
-
---[[
-     Same as [`R.invertObj`](#invertObj), however this accounts for objects with
-     duplicate values by putting the values into an array.
-     
-     @func
-
-     @category Object
-     @sig {s: x} -> {x: [ s, ... ]}
-     @param {Object} obj The object or array to invert
-     @return {Object} out A new object with keys in an array.
-     @see R.invertObj
-     @example
-     
-          local raceResultsByFirstName = {
-            first = 'alice',
-            second = 'jake',
-            third = 'alice',
-          }
-          R.invert(raceResultsByFirstName)
-          --> { 'alice': {'first', 'third'}, 'jake':{'second'} }
-]]
-R.invert = _curry1(function(obj)	
-	local out = {}
-	for k,v in pairs(obj) do
-		v = tostring(v)
-		k = tostring(k)
-		if _has(v, out) then
-			local len = R.length(out[v])
-			out[v][len + 1] = k
-		else
-			out[v] = {k}
-		end
-	end
-	return out
-end)
-
---[[
-     Returns a new object with the keys of the given object as values, and the
-     values of the given object, which are coerced to strings, as keys. Note
-     that the last key found is preferred when handling the same value.
-     
-     @func
-
-     @category Object
-     @sig {s: x} -> {x: s}
-     @param {Object} obj The object or array to invert
-     @return {Object} out A new object
-     @see R.invert
-     @example
-     
-          local raceResults = {
-            first = 'alice',
-            second = 'jake'
-          }
-          R.invertObj(raceResults)
-          --> { 'alice' = 'first', 'jake' = 'second' }
-     
-          -- Alternatively:
-          local raceResults = {'alice', 'jake'}
-          R.invertObj(raceResults)
-          --> { 'alice' = '0', 'jake' = '1' }
-]]
-R.invertObj = _curry1(function(obj)
-	local out = {}
-	if _isArray(obj) then		
-		for k,v in ipairs(obj) do			
-			v = tostring(v)
-			k = tostring(k)
-			out[v] = k
-		end
-	else
-		for k,v in ipairs(obj) do	
-			v = tostring(v)
-			k = tostring(k)		
-			out[v] = k
-		end
-	end
-	return out
-end)
-
-
---[[
-     Returns a string made by inserting the `separator` between each element and
-     concatenating all the elements into a single string.
-     
-     @func
-
-     @category List
-     @sig String -> [a] -> String
-     @param {Number|String} separator The string used to separate the elements.
-     @param {Array} xs The elements to join into a string.
-     @return {String} str The string made by concatenating `xs` with `separator`.
-     @see R.split
-     @example
-     
-          local spacer = R.join(' ')
-          spacer({'a', 2, 3.4})   --> 'a 2 3.4'
-          R.join('|', {1, 2, 3})    --> '1|2|3'
+		local spacer = R.join(' ')
+		spacer({'a', 2, 3.4})   --> 'a 2 3.4'
+		R.join('|', {1, 2, 3})  --> '1|2|3'
 ]]
 R.join = _curry2(function(sep, xs)
 	return table.concat(R.map(R.toString, xs), sep)
 end)
 
-R.joinNoCurry = function(sep, xs)
-	local out = ""
-	for i, v in ipairs(xs) do
-		if i == 1 then
-			out = v
-		else
-			out = out .. sep .. v
-		end
-	end
-	return out
-end
 
---[[
-     juxt applies a list of functions to a list of values.
-     
-     @func
 
-     @category Function
-     @sig [(a, b, ..., m) -> n] -> ((a, b, ..., m) -> [n])
-     @param {Array} fns An array of functions
-     @return {Function} A function that returns a list of values after applying each of the original `fns` to its parameters.
-     @see R.applySpec
-     @example
-     
-          local getRange = R.juxt({math.min, math.max})
-          getRange(3, 4, 9, -3) --> {-3, 9}
 
-     @symb R.juxt([f, g, h])(a, b) = [f(a, b), g(a, b), h(a, b)]
-]]
-R.juxt = _curry1(function(fns)
-	return R.converge(function (...)
-		return {...}
-	end, fns)
-end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 --[[
@@ -3560,34 +3395,7 @@ R.lastIndexOf = _curry2(function(target, xs)
 	return -1
 end)
 
---[[
-     Returns the number of elements in the array by returning `list.length`.
-     
-     @func
 
-     @since v0.3.0
-     @category List
-     @sig [a] -> Number
-     @param {Array} list The array to inspect.
-     @return {Number} The length of the array.
-     @example
-     
-          R.length({}) --> 0
-          R.length({1, 2, 3}) --> 3
-]]
-R.length = _curry1(function(v)
-	if type(v) == "table" then
-		return _safe_size(v)
-	elseif type(v) == "string" then
-		return string.len(v)
-	else
-		return 0
-	end
-end)
---[[
-	@alias length
-]]
-R.size = R.length
 
 --[[
      Returns `true` if the first argument is less than the second `false`
@@ -5656,8 +5464,8 @@ R.partition = R.juxt({
           R.remove(2, 3, [1,2,3,4,5,6,7,8]) --> [1,2,6,7,8]
 ]]
 R.remove = _curry3(function(start, count, list)
-	local result = R.slice(1, start - 1, list)
-	return R.concat(result, R.slice(start + count, #list, list))
+	local result = R.slice(1, start, list)
+	return R.concat(result, R.slice(start + count, #list + 1, list))
 end)
 
 --[[
@@ -5835,7 +5643,7 @@ end)
           R.init('a')    --> ''
           R.init('')     --> ''
 ]]
-R.init = R.slice(1, -2)
+R.init = R.slice(1, -1)
 
 --[[
      Returns a copy of the list, sorted according to the comparator function,
@@ -5996,8 +5804,8 @@ end)
 ]]
 R.splitAt = _curry2(function(index, array)
 	return {
-		R.slice(1, index - 1, array),
-		R.slice(index, #array, array)
+		R.slice(1, index, array),
+		R.slice(index, #array + 1, array)
 	}
 end)
 
@@ -6025,7 +5833,7 @@ R.splitEvery = _curry2(function(n, list)
 	local result = {}
 	local idx = 1
 	while idx <= #list do
-		result[#result + 1] = R.slice(idx, idx + n, list)
+		result[#result + 1] = R.slice(idx, idx + n + 1, list)
 		idx = idx + n + 1
 	end
 	return result
@@ -6060,7 +5868,7 @@ R.splitWhen = _curry2(function(pred, list)
 	end
 	return {
 		prefix,
-		R.slice(idx, #list, list)
+		R.slice(idx, #list + 1, list)
 	}
 end)
 
@@ -6148,7 +5956,7 @@ R.median = _curry1(function(list)
 	end
 	local width = 2 - len % 2
 	local idx = (len - width) / 2 + 1
-	return R.mean(R.slice(idx, idx + width, R.sort(R.lt, list)))
+	return R.mean(R.slice(idx, idx + width + 1, R.sort(R.lt, list)))
 end)
 
 --[[
@@ -6226,7 +6034,7 @@ end)
           R.tail('a')    --> ''
           R.tail('')     --> ''
 ]]
-R.tail = R.slice(2, 0)
+R.tail = R.slice(2, 1)
 
 
 
@@ -6306,7 +6114,7 @@ R.takeLastWhile = _curry2(function(fn, list)
 	while idx > 0 and fn(list[idx]) do
 		idx = idx - 1
 	end
-	return R.slice(idx + 1, #list, list)
+	return R.slice(idx + 1, #list + 1, list)
 end)
 
 
@@ -6341,7 +6149,7 @@ R.takeWhile = _curry2(function(fn, list)
 	while idx <= #list and fn(list[idx]) do
 		idx = idx + 1
 	end
-	return R.slice(1, idx - 1, list)
+	return R.slice(1, idx, list)
 end)
 
 --[[

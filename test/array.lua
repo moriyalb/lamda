@@ -258,4 +258,59 @@ function TestArray.test_forEach()
 	this.lu.assertEquals(count, 24)
 end
 
+function TestArray.test_groupWith()
+	this.lu.assertEquals(R.groupWith(R.T, {}), {})
+	this.lu.assertEquals(R.groupWith(R.T, "abcd"), {"abcd"})
+	this.lu.assertEquals(R.groupWith(R.F, "abcd"), {"a", "b", "c", "d"})
+	this.lu.assertEquals(R.groupWith(R.equals, {0, 1, 1, 2, 3, 5, 5, 1, 8, 8, 8, 5, 13, 21}), {{0}, {1, 1}, {2}, {3}, {5, 5}, {1}, {8, 8, 8}, {5}, {13}, {21}})
+	this.lu.assertEquals(R.groupWith(R.eqBy(R.contains(R.__, "aeiou")), 'aestiou'),  {'ae', 'st', 'iou'})
+end
+
+function TestArray.test_indexOf()
+	this.lu.assertEquals(R.indexOf(5, {1,2,3,4,5}), 5)
+	this.lu.assertEquals(R.indexOf(10, {1,2,3,4,5}), -1)
+	this.lu.assertEquals(R.indexOf('c', "abcdef"), 3)
+	this.lu.assertEquals(R.indexOf('x', "abcdef"), -1)
+end
+
+function TestArray.test_innerJoin()
+	local r = R.innerJoin(
+		function(data, id) return data.id == id end,
+		{
+			{id = 824, name = 'Richie Furay'},
+			{id = 956, name = 'Dewey Martin'},
+			{id = 313, name = 'Bruce Palmer'},
+			{id = 456, name = 'Stephen Stills'},
+			{id = 177, name = 'Neil Young'}
+		},
+		{177, 456, 999}
+	)
+	this.lu.assertEquals(r, {{id = 456, name = 'Stephen Stills'}, {id = 177, name = 'Neil Young'}})
+end
+
+function TestArray.test_insert()
+	local list = {1,2,3,4}
+	this.lu.assertEquals(R.insert(3, 100, list), {1,2,3,100,4})
+	this.lu.assertEquals(list, {1,2,3,4})
+
+	this.lu.assertEquals(R.insert(3, 100)({}), {100})
+	this.lu.assertEquals(R.insert(-2, 100)({1,2,3}), {1,2,3,100})
+
+	this.lu.assertEquals(R.insertAll(2, {5,6,7})({1,2,3}), {1,2,5,6,7,3})
+	this.lu.assertEquals(R.insertAll(3, {})({1,2,3}), {1,2,3})
+	this.lu.assertEquals(R.insertAll(3, {5,6,7})({}), {5,6,7})
+end
+
+function TestArray.test_intersperse()
+	this.lu.assertEquals(R.intersperse('n', {'ba', 'a', 'a'}),  {'ba', 'n', 'a', 'n', 'a'})
+	this.lu.assertEquals(R.intersperse('n', {}),  {})	
+	this.lu.assertEquals(R.intersperse({})({1,2,3}),  {1,{},2,{},3})
+end
+
+function TestArray.test_length()
+	this.lu.assertEquals(R.length({1,2,3}), 3)
+	this.lu.assertEquals(R.size({a = 11, b = {1,2,3}}), 2)
+end
+
+
 return TestArray

@@ -52,4 +52,9 @@ function TestMath.test_divide()
 	this.lu.assertAlmostEquals(R.divide(R.__, 10)(2), 0.2)
 end
 
+function TestMath.test_inc()
+	this.lu.assertEquals(R.inc(100), 101)
+	this.lu.assertAlmostEquals(R.inc(-.5), .5)
+end
+
 return TestMath

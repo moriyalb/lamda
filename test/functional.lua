@@ -208,4 +208,28 @@ function TestFunc.test_flip()
 	this.lu.assertEquals(R.sort(strangelt, {5,1,3,2,4}), {1,2,3,4,5})
 end
 
+function TestFunc.test_identity()
+	local obj = {}
+	this.lu.assertIs(R.identity(obj), obj)
+	local f = function() end
+	this.lu.assertIs(R.identity(f), f)
+end
+
+function TestFunc.test_ifelse()
+	local whaterve = R.ifElse(
+		R.has('count'),
+		R.dissoc('count'),
+		R.assoc('count', 1)
+	)
+	this.lu.assertEquals(whaterve({}), {count = 1})
+	this.lu.assertEquals(whaterve({count = 1}), {})
+end
+
+function TestFunc.test_juxt()
+	local getRange = R.juxt({math.min, math.max})
+	this.lu.assertEquals(getRange(1,-2,3,-4), {-4,3})
+	local judgeValue = R.juxt({R.all(R.equals(1)), R.any(R.gt(3))})
+	this.lu.assertEquals(judgeValue({1,2,3,4}), {false, true})
+end
+
 return TestFunc

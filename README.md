@@ -1,6 +1,6 @@
 # Lamda 
 
-A practical functional library for lua programmers. 
+A practical functional library for lua programmers.   
 Ported from the JavaScript version https://github.com/ramda/ramda
 
 [![Build Status](https://travis-ci.org/moriyalb/lamda.svg?branch=master)](https://travis-ci.org/moriyalb/lamda)
@@ -20,7 +20,7 @@ Ported from the JavaScript version https://github.com/ramda/ramda
 
 # Test
 
-I use luaunit to test all functions.
+I use luaunit to test all functions.  
 you can test the lamda function simple like
 ```
 	lua run_test_all.lua -v
@@ -28,12 +28,12 @@ you can test the lamda function simple like
 
 # Features
 
-1. Immutable 
-	All functions is immutable without side effect. 
-2. Functional
-	You can write lua code in functional style. 	
-3. Auto curried
-	Most function is auto curried. Placeholder is also supported.
+1. Immutable  
+	* All functions is immutable without side effect. 
+2. Functional  
+	* You can write lua code in functional style. 	
+3. Auto curried  
+	* Most function is auto curried. Placeholder is also supported.
 	
 # Notice
 

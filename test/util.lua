@@ -192,8 +192,8 @@ end
 
 function TestUtil.test_eqBy()
 	this.lu.assertTrue(R.eqBy(math.abs, 1, -1))
-	this.lu.assertTrue(R.eqBy(math.abs, 1, '1'))	
-	this.lu.assertFalse(R.eqBy(R.identity, 1, 2))	
+	this.lu.assertTrue(R.eqBy(math.abs, 1, '1'))
+	this.lu.assertFalse(R.eqBy(R.identity, 1, 2))
 end
 
 function TestUtil.test_eqProps()
@@ -203,5 +203,22 @@ function TestUtil.test_eqProps()
 	this.lu.assertFalse(R.eqProps('a', obj1, obj2))
 end
 
+function TestUtil.test_order()
+	this.lu.assertTrue(R.gt(5, 3))
+	this.lu.assertFalse(R.gt(4, 4))
+	this.lu.assertFalse(R.gt(4, 6))
+
+	this.lu.assertTrue(R.gte(5, 3))
+	this.lu.assertTrue(R.gte(4, 4))
+	this.lu.assertFalse(R.gte(4, 6))
+
+	this.lu.assertFalse(R.lt(5, 3))
+	this.lu.assertFalse(R.lt(4, 4))
+	this.lu.assertTrue(R.lt(4, 6))
+
+	this.lu.assertFalse(R.lte(5, 3))
+	this.lu.assertTrue(R.lte(4, 4))
+	this.lu.assertTrue(R.lte(4, 6))
+end
 
 return TestUtil
