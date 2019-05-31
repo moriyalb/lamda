@@ -62,8 +62,14 @@ function TestObject.test_invert()
 		second = 'jake',
 		third = 'alice',
 	}
-	this.lu.assertEquals(R.invert(raceResultsByFirstName), {alice={"third", "first"}, jake={"second"}})
-	this.lu.assertEquals(R.invertObj(raceResultsByFirstName), {alice="first", jake="second"})
+	local nbj = R.invert(raceResultsByFirstName)
+	this.lu.assertEquals(nbj.jake, {"second"})
+	this.lu.assertEquals(R.difference(nbj.alice, {"third", "first"}), {})
+
+	nbj = R.invertObj(raceResultsByFirstName)
+	this.lu.assertTrue(R.contains(nbj.alice, {"first", "third"}))
+	this.lu.assertEquals(nbj.jake, "second")
+
 	this.lu.assertEquals(R.invertObj({1,2,3}), {["1"]=1, ["2"]=2, ["3"]=3})
 end
 
@@ -152,6 +158,58 @@ function TestObject.test_pathSatisfied()
 	local pathExists = R.pathSatisfies(R.complement(R.isNull))
 	this.lu.assertTrue(pathExists({'a', 'b', 2}, {a = {b = {3, 4}}}))
 	this.lu.assertFalse(pathExists({'a', 'b', 2}, {a = 5, b = 6}))	
+end
+
+function TestObject.test_pick()
+	this.lu.assertEquals(R.pick({'a', 'd'}, {a = 1, b = 2, c = 3, d = 4}), {a = 1, d = 4})
+	this.lu.assertEquals(R.pick({'a', 'e', 'f'}, {a = 1, b = 2, c = 3, d = 4}), {a = 1})
+end
+
+function TestObject.test_pickBy()
+	local isUpperCase = R.compose(R.safeEquals, R.unpack, R.mirrorBy(R.toUpper), R.second)		
+	this.lu.assertEquals(R.pickBy(isUpperCase, {a = 1, b = 2, A = 3, B = 4}), {A=3, B=4})
+end
+
+function TestObject.test_prop()
+	this.lu.assertEquals(R.prop('a', {a = 5, b = 6}), 5)
+	this.lu.assertNil(R.prop('c', {a = 5, b = 6}))
+
+	this.lu.assertTrue(R.propIs(R.NUMBER, 'x', {x = 1, y = 2}))
+	this.lu.assertFalse(R.propIs(R.NUMBER, 'x', {x = 'a', y = 2}))
+	this.lu.assertFalse(R.propIs(R.NUMBER, 'x', {y = 2}))
+	
+end
+
+function TestObject.test_prop2()
+	local alice = {
+		name = 'ALICE',
+		age = 101
+	}
+	local favorite = R.prop('favoriteLibrary')
+	local favoriteWithDefault = R.propOr('Lamda', 'favoriteLibrary')
+
+	this.lu.assertNil(favorite(alice))
+	this.lu.assertEquals(favoriteWithDefault(alice), 'Lamda')
+
+	this.lu.assertTrue(R.propSatisfies(R.lt(0), 'x', {x = 1, y = 2}))
+	this.lu.assertFalse(R.propSatisfies(R.lt(0), 'z', {x = 1, y = 2}))
+	this.lu.assertTrue(R.propSatisfies(R.isNil, 'z', {x = 1, y = 2}))
+end
+
+function TestObject.test_prop3()
+	this.lu.assertEquals(R.props({'x', 'y'}, {x = 1, y = 2}), {1,2})
+	this.lu.assertEquals(R.props({'c', 'a', 'b'}, {b = 2, a = 1}), {[2]=1, [3]=2})
+	
+	local fullName = R.compose(R.join(' '), R.props({'first', 'last'}))
+	this.lu.assertEquals(fullName({last = 'Bullet-Tooth', age = 33, first = 'Tony'}), "Tony Bullet-Tooth")
+
+	local abby = {name = 'Abby', age = 7, hair = 'blond'}
+	local fred = {name = 'Fred', age = 12, hair = 'brown'}
+	local rusty = {name = 'Rusty', age = 10, hair = 'brown'}
+	local alois = {name = 'Alois', age = 15, disposition = 'surly'}
+	local kids = {abby, fred, rusty, alois}
+	local hasBrownHair = R.propEq('hair', 'brown')
+	this.lu.assertEquals(R.filter(hasBrownHair, kids), {{age=12, hair="brown", name="Fred"}, {age=10, hair="brown", name="Rusty"}})
 end
 
 return TestObject

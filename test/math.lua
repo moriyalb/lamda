@@ -69,4 +69,9 @@ function TestMath.test_negate()
 	this.lu.assertAlmostEquals(R.negate(-0), 0)
 end
 
+function TestMath.test_product()
+	this.lu.assertEquals(R.product({1,2,5,10}), 100)
+	this.lu.assertEquals(R.product({}), 1)
+end
+
 return TestMath

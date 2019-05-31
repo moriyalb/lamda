@@ -18,32 +18,34 @@
 	* add R.NAN/R.INF/R.OBJECT
 	* remove R.MAP/R.NULL
 	* new methods (all curried)    
-  	* R.isInf
-  	* R.isNan
-  	* R.isInteger
-  	* R.isNumber
-  	* R.isString
-  	* R.isArray
-  	* R.isObject
-  	* R.isTable
-  	* R.isFunction
-  	* R.isUserData   
-  	* R.isBoolean 
+		* R.isInf
+		* R.isNan
+		* R.isInteger
+		* R.isNumber
+		* R.isString
+		* R.isArray
+		* R.isObject
+		* R.isTable
+		* R.isFunction
+		* R.isUserData   
+		* R.isBoolean 
 	* new methods (all not curried, which can check nil value)
-  	* R.isNil
-  	* R.isNull
-  	* R.isSafeInf
-  	* R.isSafeNan
-  	* R.isSafeInteger
-  	* R.isSafeNumber
-  	* R.isSafeString
-  	* R.isSafeArray
-  	* R.isSafeObject
-  	* R.isSafeTable
-  	* R.isSafeFunction
-  	* R.isSafeUserData  
-  	* R.isSafeBoolean  
+		* R.isNil
+		* R.isNull
+		* R.isSafeInf
+		* R.isSafeNan
+		* R.isSafeInteger
+		* R.isSafeNumber
+		* R.isSafeString
+		* R.isSafeArray
+		* R.isSafeObject
+		* R.isSafeTable
+		* R.isSafeFunction
+		* R.isSafeUserData  
+		* R.isSafeBoolean  
 	* R.is method do not check any class inheritance relationship. It's just a alias method to those `is*` methods
+	* set `R.is` to non-curry function. now it's can detect `nil` value
+
 * R.keys/R.values
 	* accept table value and return as an array (ignore all nil values)
 	* R.keys is not sorted
@@ -65,6 +67,8 @@
 	* remove the string check. you can connect whatever you want but to handle the error yourself.
 * R.modulo
 	* rename to `R.mod`
+* R.propSatisfies & R.propEq
+	* fix `nil` prop bug
 
 ## Bug Fixed
 * curry function
@@ -107,6 +111,8 @@
 	```lua
 		R.path({'a', 'b', 1, 2}, {a = {b = {"hello"}}}) --> 'e'
 	```
+* R.reduceBy
+* R.countBy
 
 ## Removed
 * R.containsNoCurry

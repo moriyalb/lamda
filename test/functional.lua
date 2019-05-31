@@ -333,4 +333,12 @@ function TestFunc.test_partial()
 	this.lu.assertEquals(greetMsJaneJones('Hello'), 'Hello, Ms. Jane Jones!')
 end
 
+function TestFunc.test_mirror()
+	local obj = {a=1, b=2}
+	this.lu.assertEquals(R.mirror(obj), {{a=1, b=2}, {a=1, b=2}})
+
+	this.lu.assertEquals(R.mirrorBy(R.size, {1,2,3}), {{1,2,3}, 3})
+	this.lu.assertEquals(R.mirrorBy(R.clone)({1,2,3}), {{1,2,3}, {1,2,3}})
+end
+
 return TestFunc

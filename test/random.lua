@@ -43,8 +43,9 @@ function TestRandom.test_boxMullerSampling()
 		local s = R.boxMullerSampling(1, 1)
 		all = R.append(s, all)
 	end
-	this.lu.assertAlmostEquals(average(all), 1, 0.05)
-	this.lu.assertAlmostEquals(deviation(all), 1, 0.05)
+	local margin = 0.1
+	this.lu.assertAlmostEquals(average(all), 1, margin)
+	this.lu.assertAlmostEquals(deviation(all), 1, margin)
 end
 
 function TestRandom.test_randrange()

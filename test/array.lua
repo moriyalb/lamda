@@ -357,5 +357,36 @@ function TestArray.test_none()
 	this.lu.assertTrue(R.none(R.equals(0), tbl))
 end
 
+function TestArray.test_prepend()
+	this.lu.assertEquals(R.prepend('a', {}), {'a'})
+	this.lu.assertEquals(R.unshift('a', {'b'}), {'a', 'b'})
+end
+
+function TestArray.test_range()
+	this.lu.assertEquals(R.range(1, 5), {1,2,3,4})
+	this.lu.assertEquals(R.range(1, -5), {})
+end
+
+function TestArray.test_reduce()
+	this.lu.assertEquals(R.reduce(R.subtract, 0, {1, 2, 3, 4}), -10)
+end
+
+function TestArray.test_reduceBy()
+	local reduceToNamesBy = R.reduceBy(function(acc, student)
+		return R.append(student.name, acc) 
+	end, {})
+	local namesByGrade = reduceToNamesBy(function(student)
+		local score = student.score
+		return score < 65 and 'F' or
+				score < 70 and 'D' or
+				score < 80 and 'C' or
+				score < 90 and 'B' or 'A'
+	end)
+	local students = {{name = 'Lucy', score = 92},
+					{name = 'Drew', score = 85},
+					{name = 'Leo', score = 90},
+					{name = 'Bart', score = 62}}
+	this.lu.assertEquals(namesByGrade(students), {A={"Lucy", "Leo"}, B={"Drew"}, F={"Bart"}})
+end
 
 return TestArray

@@ -237,4 +237,20 @@ function TestUtil.test_max_min()
 	this.lu.assertEquals(R.reduce(R.minBy(square), 100, {3, -5, 4, 1, -2}), 1)
 end
 
+function TestUtil.test_pack()
+	local f = {1,2,3,4}
+	this.lu.assertEquals(R.pack(1,2,3,4), {1,2,3,4})
+end
+
+function TestUtil.test_countBy()
+	local numbers = {1.0, 1.1, 1.2, 2.0, 3.0, 2.2}
+	this.lu.assertEquals(R.countBy(math.floor)(numbers), {3,2,1})
+	local letters = {'a', 'b', 'A', 'a', 'B', 'c'}
+	this.lu.assertEquals(R.countBy(R.toLower)(letters), {a=3, b=2, c=1})
+
+	this.lu.assertEquals(R.count(1, {1,2,3,2,1,2,3,1}), 3)
+	this.lu.assertEquals(R.count(5, {1,2,5,5,3,2}), 2)
+	this.lu.assertEquals(R.count('a', "hello world") , 0)
+end
+
 return TestUtil
