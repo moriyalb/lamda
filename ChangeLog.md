@@ -57,7 +57,14 @@
 * R.forEach
 	* now take object argument
 	* the traverse function take `value` and `key` now
-  
+* R.sample
+	* remove `shuffle` config, the result is not guarantee whether shuffled or not
+* R.randrange
+	* exchange `from` and `to` if `from` is bigger than `to`
+* R.concat
+	* remove the string check. you can connect whatever you want but to handle the error yourself.
+* R.modulo
+	* rename to `R.mod`
 
 ## Bug Fixed
 * curry function
@@ -87,6 +94,19 @@
 * R.invert & R.invertObj
 	* fix bug if object value is passed in.
 	* key now is keep the origin type(not string)
+* R.map
+	* add key in the map tranverse function for array type
+	* object type will return an array.(the value sequence is not guaranteed)
+	> notice: it's different with ramda::map function which return object value when it takes object argument
+* R.nth & R.head & R.tail
+	* support string value now
+* R.omit
+* R.path
+	* fixed bug when input path is array index.
+	* support string now.
+	```lua
+		R.path({'a', 'b', 1, 2}, {a = {b = {"hello"}}}) --> 'e'
+	```
 
 ## Removed
 * R.containsNoCurry
@@ -100,6 +120,10 @@
 * R.intersectionWith 
 	* see [issue](https://github.com/ramda/ramda/pull/1868)
 * R.joinNoCurry
+* R.mapObject
+	* change to private function
+* R.mathMod
+* R.over
 
 ## Issues
 * `nil` argument

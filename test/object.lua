@@ -67,4 +67,91 @@ function TestObject.test_invert()
 	this.lu.assertEquals(R.invertObj({1,2,3}), {["1"]=1, ["2"]=2, ["3"]=3})
 end
 
+function TestObject.test_merge()
+	this.lu.assertEquals(R.merge({a=1,b=2}, {a=2,c=3}, {a=3,d=4}), {a=3,b=2,c=3,d=4})
+	this.lu.assertEquals(R.mergeAll({{a=1,b=2}, {a=2,c=3}, {a=3,d=4}}), {a=3,b=2,c=3,d=4})
+end
+
+function TestObject.test_mergeDeep()
+	local concatValues = function(k, l, r)
+		return k == 'values' and R.concat(l, r) or r
+	end
+
+	local v = R.mergeDeepWithKey(concatValues,
+		{ a = true, c = { thing = 'foo', values = {10, 20} }},
+		{ b = true, c = { thing = 'bar', values = {15, 35} }}
+	)
+	this.lu.assertEquals(v, {a=true, b=true, c={thing="bar", values={10, 20, 15, 35}}})
+
+	v = R.mergeDeepLeft({ name = 'fred', age = 10, contact = { email = 'moo@example.com' }},
+						{ age = 40, contact = { email = 'baa@example.com' }})
+	this.lu.assertEquals(v, {age=10, contact={email="moo@example.com"}, name="fred"})	
+
+	v = R.mergeDeepRight({ name = 'fred', age = 10, contact = { email = 'moo@example.com' }},
+						{ age = 40, contact = { email = 'baa@example.com' }})
+	this.lu.assertEquals(v, {age=40, contact={email="baa@example.com"}, name="fred"})	
+
+	v = R.mergeDeepWith(R.concat,
+		{ a = true, c = { values = {10, 20} }},
+		{ b = true, c = { values = {15, 35} }})
+	this.lu.assertEquals(v, {a=true, b=true, c={values={10, 20, 15, 35}}})
+
+	v = R.mergeWith(R.concat,
+		{ a = true, values = {10, 20} },
+		{ b = true, values = {15, 35} })
+	this.lu.assertEquals(v, {a=true, b=true, values = {10, 20, 15, 35}})
+
+	v = R.mergeWithKey(concatValues,
+		{ a = true, thing = 'foo', values = {10, 20} },
+		{ b = true, thing = 'bar', values = {15, 35} })
+	this.lu.assertEquals(v, {a=true, b=true, thing="bar", values={10, 20, 15, 35}})
+end
+
+function TestObject.test_objOf()
+	local matchPhrases = R.compose(
+		R.objOf('must'),
+		R.map(R.objOf('match_phrase'))
+	)
+	this.lu.assertEquals(matchPhrases({'foo', 'bar', 'baz'}), {must={{match_phrase="foo"}, {match_phrase="bar"}, {match_phrase="baz"}}})
+end
+
+function TestObject.test_omit()
+	this.lu.assertEquals(R.omit({'a','b'}, {a=1,b=2,c=3,d=4}), {c=3,d=4})
+	this.lu.assertEquals(R.omit({}, {a=1,b=2,c=3,d=4}), {a=1,b=2,c=3,d=4})
+end
+
+function TestObject.test_path()
+	this.lu.assertEquals(R.path({'a', 'b'}, {a = {b = 2}}), 2)
+	this.lu.assertNil(R.path({'a', 'c'}, {a = {b = 2}}))
+	this.lu.assertEquals(R.path({'a', 'b', 1, 2}, {a = {b = {"hello"}}}), "e")
+end
+
+function TestObject.test_pathEq()
+	local user1 = { address = { zipCode = 90210 } }
+	local user2 = { address = { zipCode = 55555 } }
+	local user3 = { name = 'Bob' }
+	local users = { user1, user2, user3 }
+	local isFamous = R.pathEq({'address', 'zipCode'}, 90210)
+	this.lu.assertEquals(R.filter(isFamous, users), {{address={zipCode=90210}}})
+end
+
+function TestObject.test_pathOr()
+	this.lu.assertEquals(R.pathOr('N/A', {'a', 'b'}, {a = {b = 2}}), 2)
+	this.lu.assertEquals(R.pathOr('N/A', {'a', 'b'}, {a = {c = 2}}), "N/A")
+end
+
+function TestObject.test_pluck()
+	this.lu.assertEquals(R.pluck('a')({{a = 1}, {a = 2}}), {1, 2})
+	this.lu.assertEquals(R.pluck(1)({{1, 2}, {3, 4}}), {1, 3})
+	this.lu.assertEquals(R.pluck('val', {a = {val = 3}, b = {val = 5}}), {a=3, b=5})
+end
+
+function TestObject.test_pathSatisfied()
+	this.lu.assertTrue(R.pathSatisfies(R.lt(0), {'x', 'y'}, {x = {y = 2}}))
+	this.lu.assertTrue(R.pathSatisfies(R.isNil, {'x', 'z'}, {x = {y = 2}}))
+	local pathExists = R.pathSatisfies(R.complement(R.isNull))
+	this.lu.assertTrue(pathExists({'a', 'b', 2}, {a = {b = {3, 4}}}))
+	this.lu.assertFalse(pathExists({'a', 'b', 2}, {a = 5, b = 6}))	
+end
+
 return TestObject

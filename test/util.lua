@@ -221,4 +221,20 @@ function TestUtil.test_order()
 	this.lu.assertTrue(R.lte(4, 6))
 end
 
+function TestUtil.test_max_min()
+	this.lu.assertEquals(R.max(5, 6), 6)
+	this.lu.assertEquals(R.max(-1)(100), 100)
+	this.lu.assertEquals(R.maxBy(R.abs, 5, 6), 6)
+	this.lu.assertEquals(R.maxBy(R.abs, -1000)(100), -1000)
+
+	this.lu.assertEquals(R.min(5, 6), 5)
+	this.lu.assertEquals(R.min(-1)(100), -1)
+	this.lu.assertEquals(R.minBy(R.divide(1), 5, 6), 6)
+	this.lu.assertEquals(R.minBy(R.divide(1), -10)(10), -10)
+
+	local square = function(x) return x*x end
+	this.lu.assertEquals(R.reduce(R.maxBy(square), 0, {3, -5, 4, 1, -2}), -5)
+	this.lu.assertEquals(R.reduce(R.minBy(square), 100, {3, -5, 4, 1, -2}), 1)
+end
+
 return TestUtil

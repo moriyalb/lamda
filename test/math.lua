@@ -57,4 +57,16 @@ function TestMath.test_inc()
 	this.lu.assertAlmostEquals(R.inc(-.5), .5)
 end
 
+function TestMath.test_multiply()
+	this.lu.assertAlmostEquals(R.multiply(3, 8), 24)
+	this.lu.assertAlmostEquals(R.multiply(0.1, 0.2), 0.02)
+	this.lu.assertAlmostEquals(R.multiply(-0.142857142857143, 7), -1)
+end
+
+function TestMath.test_negate()
+	this.lu.assertAlmostEquals(R.negate(1), -1)
+	this.lu.assertAlmostEquals(R.negate(0.1), -0.1)
+	this.lu.assertAlmostEquals(R.negate(-0), 0)
+end
+
 return TestMath

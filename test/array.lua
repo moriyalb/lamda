@@ -209,7 +209,7 @@ end
 
 function TestArray.test_filter()
 	this.lu.assertEquals(R.filter(R.gte(2), {1,2,3,4}), {1,2})
-	local isEven = R.o(R.equals(0), R.mathMod(R.__, 2))
+	local isEven = R.o(R.equals(0), R.mod(R.__, 2))
 	local filterEven = R.filter(isEven)
 	this.lu.assertEquals(filterEven({1,2,3,4}), {2,4})
 	this.lu.assertEquals(filterEven({a=1,b=2,c=3,d=4}), {b=2,d=4})
@@ -310,6 +310,51 @@ end
 function TestArray.test_length()
 	this.lu.assertEquals(R.length({1,2,3}), 3)
 	this.lu.assertEquals(R.size({a = 11, b = {1,2,3}}), 2)
+end
+
+function TestArray.test_lastIndexOf()
+	this.lu.assertEquals(R.lastIndexOf(5, {1,3,5,7,5,7,5,9,4,8}), 7)
+	this.lu.assertEquals(R.lastIndexOf(10, {1,2,3,4,5}), -1)
+	this.lu.assertEquals(R.lastIndexOf('c', "abcdccecf"), 8)
+	this.lu.assertEquals(R.lastIndexOf('x', "abcdef"), -1)
+end
+
+function TestArray.test_nth()
+	this.lu.assertEquals(R.nth(1, {'a','b','c'}), 'a')
+	this.lu.assertEquals(R.nth(0, {'a','b','c'}), 'a')
+	this.lu.assertEquals(R.nth(-1, {'a','b','c'}), 'c')
+	this.lu.assertEquals(R.nth(3, {'a','b','c'}), 'c')
+	this.lu.assertNil(R.nth(5, {'a','b','c'}))
+	this.lu.assertNil(R.nth(-5, {'a','b','c'}))
+
+	this.lu.assertEquals(R.nth(1, "abc"), 'a')
+	this.lu.assertEquals(R.nth(0, "abc"), 'a')
+	this.lu.assertEquals(R.nth(-1, "abc"), 'c')
+	this.lu.assertEquals(R.nth(3, "abc"), 'c')
+	this.lu.assertEquals(R.nth(5, "abc"), '')
+	this.lu.assertEquals(R.nth(-5, "abc"), '')
+end
+
+function TestArray.test_head_last()
+	this.lu.assertEquals(R.head({'a','b','c'}), 'a')
+	this.lu.assertEquals(R.last({'a','b','c'}), 'c')
+	this.lu.assertNil(R.head({}))
+	this.lu.assertNil(R.last({}))
+
+	this.lu.assertEquals(R.head("abc"), 'a')
+	this.lu.assertEquals(R.last("abc"), 'c')
+	this.lu.assertEquals(R.head(""), '')
+	this.lu.assertEquals(R.last(""), '')
+end
+
+function TestArray.test_none()
+	local tbl = {3, 3, 3, 2}
+	this.lu.assertFalse(R.none(R.equals(3), tbl))
+	this.lu.assertFalse(R.none(R.equals(2))(tbl))
+	this.lu.assertTrue(R.none(R.equals(4))(tbl))
+
+	tbl = {}
+	this.lu.assertTrue(R.none(R.equals(0), tbl))
 end
 
 
