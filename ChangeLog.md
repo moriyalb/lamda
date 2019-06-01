@@ -69,6 +69,10 @@
 	* rename to `R.mod`
 * R.propSatisfies & R.propEq
 	* fix `nil` prop bug
+* R.same added
+* R.replace
+	* add replace count
+	* notice this method is not like the js version because lua doesn't include really regex expression.
 
 ## Bug Fixed
 * curry function
@@ -84,7 +88,9 @@
 * unpack bug
 	* from lua5.2, the `unpack` function must be called as `table.unpack` 
 
-* R.ascend & R.decend is transposed
+* R.ascend & R.decend
+	* fix transposed bug
+	* return 0, -1 and 1 now
 * R.curry3 return `nil` when no arguments is passed in
 * R.isEmpty will check `nan` and `inf` value
 * R.slice
@@ -113,6 +119,17 @@
 	```
 * R.reduceBy
 * R.countBy
+* R.groupBy
+* R.reduceWhile
+	* we don't really implement the `reduced` method to end a reduce action. 
+	* we use a closure value to solve this problem.
+	* [more info](https://ramdajs.com/docs/#reduced)
+
+* R.split
+	* remove string:gsub algorthim, it's donen't work for <code>R.split("xx")</code>
+* R.splitEvery	
+* R.splitWhen
+	* support string now.
 
 ## Removed
 * R.containsNoCurry
@@ -130,6 +147,10 @@
 	* change to private function
 * R.mathMod
 * R.over
+* R.replaceAll
+* R.set
+* R.sortBy
+	* use R.sort(R.ascend(fn)) or R.sort(R.descend(fn)) instead now.
 
 ## Issues
 * `nil` argument
@@ -147,3 +168,4 @@
 		local cmp = function(a, b) return a%2 == b%2 end
 		R.differenceWith(cmp, {1,2,3,4}, {5,7}) --> {2} instead of {2,4} ? is that right ?
 	```
+	* ramda has fix this problem in 0.26. (I think I should keep the same behavior with current ramda version)

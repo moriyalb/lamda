@@ -1,5 +1,5 @@
 --  Lamda v0.2.0
---  https://github.com/moriyalb/lamda
+--  https:--github.com/moriyalb/lamda
 --  (c) 2017 MoriyaLB
 --  Lamda may be freely distributed under the MIT license.
 
@@ -643,7 +643,7 @@ end
     Returns the first argument.
 	
 	@func
-	@since v0.1.0
+	
 	@category Util
 	@sig a, *... -> a
 	@param *, ...
@@ -696,8 +696,7 @@ R.empty = _curry1(function(x)
 end)
 
 --[[
-	Returns `true` if its arguments are equivalent, `false` otherwise. Handles
-	cyclical data structures.
+	Returns `true` if its arguments are equivalent, `false` otherwise. 
 	
 	@func
 	@category Util
@@ -705,6 +704,7 @@ end)
 	@param {*} a
 	@param {*} b
 	@return {Boolean}
+	@see R.same
 	@example	
 		R.equals(1, 1) --> true
 		R.equals(1, '1') --> false
@@ -1382,10 +1382,32 @@ end)
 R.pack = _pack
 
 --[[
+	Returns `true` if its arguments are equivalent by reference, `false` otherwise. 
+	
+	@func
+	@category Util
+	@sig a -> b -> Boolean
+	@param {*} a
+	@param {*} b
+	@return {Boolean}
+	@see R.equals
+	@example	
+		R.same(1, 1) --> true
+		R.same(1, '1') --> false
+		R.same({1, 2, 3}, {1, 2, 3}) --> false
+		local a = {}
+		local b = a
+		R.same(a, b) --> true
+]]
+R.same = _curry2(function(a, b)
+	return a == b
+end)
+
+--[[
     Returns the second argument.
 	
 	@func
-	@since v0.1.0
+	
 	@category Util
 	@sig a, b, *... -> b
 	@param *, ...
@@ -1405,12 +1427,73 @@ R.second = function(...)
 	end
 end
 
+--[[
+	Print all the arguments to stdout
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig * -> nil
+	@param *
+	@example     
+		R.show(1,2,"hell", {a=b={c="hello"}})
+	@not curried		
+]]
+R.show = function(...)
+	local _t = ""
+	for k, v in ipairs({...}) do
+		_t = _t .. R.toString(v)
+	end
+	print(_t)
+end
+
+--[[
+	Finds the set (i.e. no duplicates) of all elements contained in the first or
+	second list, but not both.
+	
+	@func
+	@category Util
+	@sig [*] -> [*] -> [*]
+	@param {Array} list1 The first list.
+	@param {Array} list2 The second list.
+	@return {Array} The elements in `list1` or `list2`, but not both.
+	@see R.symmetricDifferenceWith, R.difference, R.differenceWith
+	@example	
+		R.symmetricDifference({1,2,3,4}, {7,6,5,4,3}) --> {1,2,7,6,5}
+		R.symmetricDifference({7,6,5,4,3}, {1,2,3,4}) --> {7,6,5,1,2}
+]]
+R.symmetricDifference = _curry2(function(list1, list2)
+	return R.concat(R.difference(list1, list2), R.difference(list2, list1))
+end)
+
+--[[
+	Finds the set (i.e. no duplicates) of all elements contained in the first or
+	second list, but not both. Duplication is determined according to the value
+	returned by applying the supplied predicate to two list elements.
+	
+	@func
+	@category Util
+	@sig ((a, a) -> Boolean) -> [a] -> [a] -> [a]
+	@param {Function} pred A predicate used to test whether two items are equal.
+	@param {Array} list1 The first list.
+	@param {Array} list2 The second list.
+	@return {Array} The elements in `list1` or `list2`, but not both.
+	@see R.symmetricDifference, R.difference, R.differenceWith
+	@example	
+		local eqA = R.eqBy(R.prop('a'))
+		local l1 = {{a=1}, {a=2}, {a=3}, {a=4}}
+		local l2 = {{a=3}, {a=4}, {a=5}, {a=6}}
+		R.symmetricDifferenceWith(eqA, l1, l2) --> {{a=1}, {a=2}, {a=5}, {a=6}}
+]]
+R.symmetricDifferenceWith = _curry3(function(pred, list1, list2)
+	return R.concat(R.differenceWith(pred, list1, list2), R.differenceWith(pred, list2, list1))
+end)
 
 --[[
 	Convert the value to string recursively
 	
 	@func
-	@since v0.1.0
+	
 	@category Util
 	@sig * -> String
 	@param *
@@ -1454,7 +1537,7 @@ end
 	other languages and libraries.
 	
 	@func
-	@since v0.1.0
+	
 	@category Functional
 	@sig a -> (* -> a)
 	@param {*} val The value to wrap in a function
@@ -1473,7 +1556,7 @@ end)
 	A function that always returns `false`. Any passed in parameters are ignored.
 	
 	@func
-	@since v0.1.0
+	
 	@category Functional
 	@sig * -> Boolean
 	@param {*}
@@ -1488,7 +1571,7 @@ R.F = R.always(false)
 	A function that always returns `true`. Any passed in parameters are ignored.
 	
 	@func
-	@since v0.1.0
+	
 	@category Functional
 	@sig * -> Boolean
 	@param {*}
@@ -1630,7 +1713,7 @@ end)
 R.ascend = _curry3(function(fn, a, b)
 	local aa = fn(a)
 	local bb = fn(b)
-    return aa < bb
+    return R.same(aa, bb) and 0 or aa < bb and -1 or 1
 end)
 
 --[[
@@ -1958,7 +2041,7 @@ R.curry3 = _curry3
 R.descend = _curry3(function(fn, a, b)
 	local aa = fn(a)
 	local bb = fn(b)
-	return aa > bb
+	return R.same(aa, bb) and 0 or aa > bb and -1 or 1
 end)
 
 --[[
@@ -2133,7 +2216,7 @@ end)
 	@param {*} acc The accumulator value.
 	@param {Array} list The list to iterate over.
 	@return {*} The final, accumulated value.
-	@see R.addIndex, R.mapAccumRight
+	@see R.mapAccumRight
 	@example	
 		local digits = {'1', '2', '3', '4'}
 		local appender = R.juxt({R.concat, R.concat})
@@ -2183,7 +2266,7 @@ end)
 	@param {*} acc The accumulator value.
 	@param {Array} list The list to iterate over.
 	@return {*} The final, accumulated value.
-	@see R.addIndex, R.mapAccum
+	@see R.mapAccum
 	@example
 		local digits = {'1', '2', '3', '4'}
 		local appender = R.juxt({R.concat, R.concat})
@@ -2645,7 +2728,7 @@ end)
 	Adds two values.
 	
 	@func
-	@since v0.1.0
+	
 	@category Math
 	@sig number -> number -> number
 	@param {number} a
@@ -2668,7 +2751,7 @@ R.plus = R.add
 	Subtracts its second argument from its first argument.
 	
 	@func
-	@since v0.1.0
+	
 	@category Math
 	@sig Number -> Number -> Number
 	@param {Number} a The first value.
@@ -2771,6 +2854,47 @@ end)
 R.inc = R.add(1)
 
 --[[
+	Returns the mean of the given list of numbers.
+	
+	@func
+	@category Math
+	@sig [Number] -> Number
+	@param {Array} list
+	@return {Number}
+	@see R.median
+	@example	
+		R.mean({2, 7, 9}) --> 6
+		R.mean({}) --> nan
+]]
+R.mean = _curry1(function(list)
+	return R.sum(list) / #list
+end)
+
+--[[
+	Returns the median of the given list of numbers.
+	
+	@func
+	@category Math
+	@sig [Number] -> Number
+	@param {Array} list
+	@return {Number}
+	@see R.mean
+	@example	
+		R.median({2, 9, 7}) --> 7
+		R.median({7, 2, 10, 9}) --> 8
+		R.median({}) --> nan
+]]
+R.median = _curry1(function(list)
+	local len = #list
+	if len == 0 then
+		return 0/0
+	end
+	local width = 2 - len % 2
+	local idx = (len - width) / 2 + 1
+	return R.mean(R.slice(idx, idx + width, R.sort(R.lt, list)))
+end)
+
+--[[
 	Divides the first parameter by the second and returns the remainder. 
 	
 	@func
@@ -2840,6 +2964,8 @@ end)
 		R.product({}) --> 1
 ]]
 R.product = _curry3(_reduce)(R.multiply, 1)
+
+
 
 -- ================================================
 -- ================ Array Functions ===============
@@ -3190,7 +3316,7 @@ end)
 	@param {Function} predicate The function to be called on each element
 	@param {Array} list The collection to iterate over.
 	@return {Array} A new array without any trailing elements that return `falsy` values from the `predicate`.
-	@see R.takeLastWhile, R.addIndex, R.drop, R.dropWhile
+	@see R.takeLastWhile, R.drop, R.dropWhile
 	@example	
 		R.dropLastWhile(R.gte(3), {1, 2, 3, 4, 3, 2, 1}) --> {1, 2, 3, 4}
 ]]
@@ -3215,7 +3341,7 @@ end)
 	@param {Function} fn The function called per iteration.
 	@param {Array} list The collection to iterate over.
 	@return {Array} A new array.
-	@see R.takeWhile, R.transduce, R.addIndex
+	@see R.takeWhile
 	@example	
 		R.dropWhile(R.gte(2), {1, 2, 3, 4, 3, 2, 1}) --> {3, 4, 3, 2, 1}
 ]]
@@ -3240,7 +3366,7 @@ end)
 	@param {Function} pred
 	@param {Array} filterable
 	@return {Array} Filterable
-	@see R.reject, R.transduce, R.addIndex
+	@see R.reject
 	@example	
 		local isEven = function(n) return n % 2 == 0 end	
 		R.filter(isEven, {1, 2, 3, 4}) --> {2, 4}	
@@ -3416,7 +3542,6 @@ R.flatten = _curry1(_makeFlat(true))
 	@param {Function} fn The function to invoke. Receives argument, `value` and `key`.
 	@param {Array} list The list to iterate over.
 	@return {Array} The original list.
-	@see R.addIndex
 	@example
 		local printXPlusFive = function(x) print(x + 5) end
 		R.forEach(printXPlusFive, {1, 2, 3})
@@ -3826,8 +3951,7 @@ end)
 	the iterator function and passing it an accumulator value and the current
 	value from the array, and then passing the result to the next call.
 	
-	The iterator function receives two values: *(acc, value)*. It may use
-	[`R.reduced`](#reduced) to shortcut the iteration.
+	The iterator function receives two values: *(acc, value)*. 
 	
 	The arguments' order of [`reduceRight`](#reduceRight)'s iterator function
 	is *(value, acc)*.
@@ -3840,9 +3964,18 @@ end)
 	@param {*} acc The accumulator value.
 	@param {Array} list The list to iterate over.
 	@return {*} The final, accumulated value.
-	@see R.reduced, R.addIndex, R.reduceRight
+	@see R.reduceRight
 	@example	
 		R.reduce(R.subtract, 0, {1, 2, 3, 4}) --> ((((0 - 1) - 2) - 3) - 4) = -10	
+		--          -               -10
+		--         / \              / \
+		--        -   4           -6   4
+		--       / \              / \
+		--      -   3   ==>     -3   3
+		--     / \              / \
+		--    -   2           -1   2
+		--   / \              / \
+		--  0   1            0   1
 
 	@symb R.reduce(f, a, [b, c, d]) = f(f(f(a, b), c), d)
 ]]
@@ -3884,6 +4017,300 @@ R.reduce = _curry3(_reduce)
 		namesByGrade(students) --> {A={"Lucy", "Leo"}, B={"Drew"}, F={"Bart"}}
 ]]
 R.reduceBy = _reduceBy
+
+--[[
+	Returns a single item by iterating through the list, successively calling
+	the iterator function and passing it an accumulator value and the current
+	value from the array, and then passing the result to the next call.
+	
+	Similar to [`reduce`](#reduce), except moves through the input list from the
+	right to the left.
+	
+	The iterator function receives two values: *(value, acc)*, while the arguments'
+	order of `reduce`'s iterator function is *(acc, value)*.
+	
+	@func	@category Array
+	@sig (a, b -> b) -> b -> [a] -> b
+	@param {Function} fn The iterator function. Receives two values, the current element from the array
+		and the accumulator.
+	@param {*} acc The accumulator value.
+	@param {Array} list The list to iterate over.
+	@return {*} The final, accumulated value.
+	@see R.reduce
+	@example     
+		R.reduceRight(R.subtract, 0, {1, 2, 3, 4}) --> (1 - (2 - (3 - (4 - 0)))) = -2
+		--   -               -2
+		--  / \              / \
+		-- 1   -            1   3
+		--    / \              / \
+		--   2   -     ==>    2  -1
+		--      / \              / \
+		--     3   -            3   4
+		--        / \              / \
+		--       4   0            4   0
+	
+    @symb R.reduceRight(f, a, [b, c, d]) = f(b, f(c, f(d, a)))
+]]
+R.reduceRight = _curry3(function(fn, acc, list)
+	local idx = #list
+	while idx > 0 do
+		acc = fn(list[idx], acc)
+		idx = idx - 1
+	end
+	return acc
+end)
+
+
+--[[
+	Like [`reduce`](#reduce), `reduceWhile` returns a single item by iterating
+	through the list, successively calling the iterator function. `reduceWhile`
+	also takes a predicate that is evaluated before each step. If the predicate
+	returns `false`, it "short-circuits" the iteration and returns the current
+	value of the accumulator.
+	
+	@func
+	@category Array
+	@sig ((a, b) -> Boolean) -> ((a, b) -> a) -> a -> [b] -> a
+	@param {Function} pred The predicate. It is passed the accumulator and the
+		current element.
+	@param {Function} fn The iterator function. Receives two values, the
+		accumulator and the current element.
+	@param {*} a The accumulator value.
+	@param {Array} list The list to iterate over.
+	@return {*} The final, accumulated value.
+	@see R.reduce, R.reduced
+	@example	
+		local isOdd = R.o(R.equals(1), R.mod)
+		local xs = {1, 3, 5, 60, 777, 800}
+		R.reduceWhile(isOdd, R.add, 0, xs) --> 9
+	
+		local ys = {2, 4, 6}
+		R.reduceWhile(isOdd, R.add, 111, ys) --> 111
+]]
+R.reduceWhile = _curryN(4, {}, function(pred, fn, a, list)
+	local terminate = false
+	return _reduce(function (acc, x)
+		if terminate or not pred(acc, x) then
+			terminate = true
+			return acc 
+		end
+		return fn(acc, x)
+	end, a, list)
+end)
+
+--[[
+	Splits a list into sub-lists stored in an object, based on the result of
+	calling a String-returning function on each element, and grouping the
+	results according to values returned.
+		
+	@func
+	@category Array
+	@sig (a -> String) -> [a] -> {String: [a]}
+	@param {Function} fn Function :: a -> String
+	@param {Array} list The array to group
+	@return {Object} An object with the output of `fn` for keys, mapped to arrays of elements
+			that produced that key when passed to `fn`.
+	
+	@example	
+		local byGrade = R.groupBy(function(student) 
+			local score = student.score
+			return score < 65 and 'F' or
+					score < 70 and 'D' or
+					score < 80 and 'C' or
+					score < 90 and 'B' or 'A'
+		end)
+		local students = {{name = 'Lucy', score = 92},
+					{name = 'Drew', score = 85},
+					{name = 'Leo', score = 90},
+					{name = 'Bart', score = 62}}
+		byGrade(students)
+		--> {
+		-- 	A={{name="Lucy", score=92}, {name="Leo", score=90}},
+		-- 	B={{name="Drew", score=85}},
+		-- 	F={{name="Bart", score=62}}
+		-- }
+]]
+R.groupBy = _curry2(R.reduceBy(function (acc, item)	
+	if acc == R.NIL then
+		acc = {}
+	end
+	acc[#acc + 1] = item
+	return acc
+end, R.NIL))
+
+--[[
+	Given a function that generates a key, turns a list of objects into an
+	object indexing the objects by the given key. Note that if multiple
+	objects generate the same value for the indexing key only the last value
+	will be included in the generated object.
+		
+	@func
+	@category Array
+	@sig (a -> String) -> [{k: v}] -> {k: {k: v}}
+	@param {Function} fn Function :: a -> String
+	@param {Array} array The array of objects to index
+	@return {Object} An object indexing each array element by the given property.
+	@example	
+		local list = {{id = 'xyz', title = 'A'}, {id = 'abc', title = 'B'}}
+		R.indexBy(R.prop('id'), list)
+		--> {abc: {id = 'abc', title = 'B'}, xyz: {id = 'xyz', title = 'A'}}
+]]
+R.indexBy = R.reduceBy(function (acc, elem)
+	return elem
+end, "nil")
+
+--[[
+	The complement of [`filter`](#filter).
+	
+	@func
+	@category Array
+	@sig Filterable f => (a -> Boolean) -> f a -> f a
+	@param {Function} pred
+	@param {Array} filterable
+	@return {Array}
+	@see R.filter
+	@example	
+		local isOdd = R.o(R.equals(1), R.mod(R.__, 2))	
+		R.reject(isOdd, {1, 2, 3, 4}) --> {2, 4}
+		R.reject(isOdd, {a = 1, b = 2, c = 3, d = 4}) --> {b = 2, d = 4}
+]]
+R.reject = _curry2(function(pred, filterable)
+	return R.filter(_complement(pred), filterable)
+end)
+
+--[[
+	Takes a predicate and a list or other `Filterable` object and returns the
+	pair of filterable objects of the same type of elements which do and do not
+	satisfy, the predicate, respectively. Filterable objects include plain objects or any object
+	that has a filter method such as `Array`.
+	
+	@func
+	@category Array
+	@sig Filterable f => (a -> Boolean) -> f a -> [f a, f a]
+	@param {Function} pred A predicate to determine which side the element belongs to.
+	@param {Array} filterable the list (or other filterable) to partition.
+	@return {Array} An array, containing first the subset of elements that satisfy the
+			predicate, and second the subset of elements that do not satisfy.
+	@see R.filter, R.reject
+	@example	
+		R.partition(R.contains('s'), {'sss', 'ttt', 'foo', 'bars'}) --> {{'sss', 'bars'}, {'ttt', 'foo' }}	
+		R.partition(R.contains('s'), {a = 'sss', b = 'ttt', foo = 'bars'}) --> {{ a = 'sss', foo = 'bars' }, { b = 'ttt' }}
+]]
+R.partition = R.juxt({
+	R.filter,
+	R.reject
+})
+
+--[[
+	Removes the sub-list of `list` starting at index `start` and containing
+	`count` elements. _Note that this is not destructive_: it returns a copy of
+	the list with the changes.
+	<small>No lists have been harmed in the application of this function.</small>
+	
+	@func
+	@category Array
+	@sig Number -> Number -> [a] -> [a]
+	@param {Number} start The position to start removing elements
+	@param {Number} count The number of elements to remove
+	@param {Array} list The list to remove from
+	@return {Array} A new Array with `count` elements from `start` removed.
+	@example	
+		R.remove(2, 3, {1,2,3,4,5,6,7,8}) --> {1,2,6,7,8}
+]]
+R.remove = _curry3(function(start, count, list)
+	if count <= 0 then return list end
+	if start == 0 then start = 1 end
+	local result = R.slice(1, start, list)
+	return R.concat(result, R.slice(start + count, #list + 1, list))
+end)
+
+--[[
+	Returns a fixed list of size `n` containing a specified identical value.
+	
+	@func
+	@category Array
+	@sig a -> n -> [a]
+	@param {*} value The value to repeat.
+	@param {Number} n The desired size of the output list.
+	@return {Array} A new array containing `n` `value`s.
+	@see R.times
+	@example	
+		R.repeat_('hi', 5) --> {'hi', 'hi', 'hi', 'hi', 'hi'}
+		local obj = {}
+		local repeatedObjs = R.repeat_(obj, 5) --> {{}, {}, {}, {}, {}}
+		R.same(repeatedObjs[1], repeatedObjs[2]) --> true
+
+	@symb R.repeat(a, 0) = []
+	@symb R.repeat(a, 1) = [a]
+	@symb R.repeat(a, 2) = [a, a]
+]]
+R.repeat_ = _curry2(function(value, n)
+	return R.times(R.always(value), n)
+end)
+
+--[[
+	Returns a new list or string with the elements or characters in reverse
+	order.
+	
+	@func
+	@category Array
+	@sig [a] -> [a]
+	@sig String -> String
+	@param {Array|String} list
+	@return {Array|String}
+	@example	
+		R.reverse({1, 2, 3})  --> {3, 2, 1}
+		R.reverse({1, 2})     --> {2, 1}
+		R.reverse({1})        --> {1}
+		R.reverse({})         --> {}
+	
+		R.reverse('abc')      --> 'cba'
+		R.reverse('ab')       --> 'ba'
+		R.reverse('a')        --> 'a'
+		R.reverse('')         --> ''
+]]
+R.reverse = _curry1(function(list)
+	if _isString(list) then
+		return string.reverse(list)
+	else
+		local result = {}
+		for i = #list,1,-1 do
+			result[#result + 1] = list[i]
+		end
+		return result
+	end
+end)
+
+--[[
+	Scan is similar to [`reduce`](#reduce), but returns a list of successively
+	reduced values from the left
+	
+	@func
+	@category Array
+	@sig (a,b -> a) -> a -> [b] -> [a]
+	@param {Function} fn The iterator function. Receives two values, the accumulator and the
+		current element from the array
+	@param {*} acc The accumulator value.
+	@param {Array} list The list to iterate over.
+	@return {Array} A list of all intermediately reduced values.
+	@see R.reduce
+	@example	
+		local numbers = {1, 2, 3, 4}
+		local factorials = R.scan(R.multiply, 1, numbers) --> {1, 1, 2, 6, 24}
+
+	@symb R.scan(f, a, [b, c]) = [a, f(a, b), f(f(a, b), c)]
+]]
+R.scan = _curry3(function(fn, acc, list)
+	local idx = 1
+	local len = #list
+	local result = {acc}
+	while idx <= len do
+		acc = fn(acc, list[idx])
+		result[idx + 1] = acc
+		idx = idx + 1
+	end
+	return result
+end)
 
 --[[
 	Returns the elements of the given list or string from `fromIndex` (inclusive) to `toIndex` (exclusive).	
@@ -3930,6 +4357,266 @@ R.slice = _curry3(function(start, stop, list)
 		return array
 	end
 end)
+
+--[[
+	Returns all but the last element of the given list or string.
+	
+	@func
+
+	@since v0.9.0
+	@category Array
+	@sig [a] -> [a]
+	@sig String -> String
+	@param {*} list
+	@return {*}
+	@see R.last, R.head, R.tail
+	@example	
+		R.init({1, 2, 3})  --> {1,2}
+		R.init({1, 2})     --> {1}
+		R.init({1})        --> {}
+		R.init({})         --> {}
+	
+		R.init('abc')  --> 'ab'
+		R.init('ab')   --> 'a'
+		R.init('a')    --> ''
+		R.init('')     --> ''
+]]
+R.init = R.slice(1, -1)
+
+--[[
+	Returns a copy of the list, sorted according to the comparator function,
+	which should accept two values at a time and return a negative number if the
+	first value is smaller, a positive number if it's larger, and zero if they
+	are equal. Please note that this is a **copy** of the list. It does not
+	modify the original.
+	
+	@func
+	@category Array
+	@sig (a,a -> Number) -> [a] -> [a]
+	@param {Function} comparator A sorting function :: a -> b -> Int
+	@param {Array} list The list to sort
+	@return {Array} a new array with its elements sorted by the comparator function.
+	@example	
+		local diff = R.lt
+		R.sort(diff, {4,2,7,5}) --> {2, 4, 5, 7}
+]]
+R.sort = _curry2(function(comparator, list)
+	local _l = R.clone(list)
+	table.sort(_l, function(a, b)
+		local result = comparator(a, b)
+		if _isBoolean(result) then return result
+		else return result < 0 end
+	end)
+	return _l
+end)
+
+--[[
+	Sorts a list according to a list of comparators.
+	
+	@func
+	@category Array
+	@sig [a -> a -> Number] -> [a] -> [a]
+	@param {Array} functions A list of comparator functions.
+	@param {Array} list The list to sort.
+	@return {Array} A new list sorted according to the comarator functions.
+	@example	
+		local alice = {
+			name = 'alice',
+			age = 40
+		}
+		local bob = {
+			name = 'bob',
+			age = 30
+		}
+		local clara = {
+			name = 'clara',
+			age = 40
+		}
+		local people = {clara, bob, alice}
+		local ageNameSort = R.sortWith({
+			R.descend(R.prop('age')),
+			R.ascend(R.prop('name'))
+		})
+		ageNameSort(people) --> {alice, clara, bob}
+]]
+R.sortWith = _curry2(function(comparator, list)
+	local _l = R.clone(list)
+	table.sort(_l, function (a, b)
+		local result = 0
+		local i = 1
+		while result == 0 and i <= #comparator do
+			result = comparator[i](a, b)
+			i = i + 1
+		end
+		return result < 0
+	end)
+	return _l
+end)
+
+--[[
+	Splits a string into an array of strings based on the given
+	separator.
+	
+	@func
+	@category String
+	@sig (String | String) -> String -> [String]
+	@param {String|String} sep The pattern.
+	@param {String} str The string to separate into an array.
+	@return {Array} The array of strings from `str` separated by `str`.
+	@see R.join
+	@example	
+		local pathComponents = R.split('/')
+		R.tail(pathComponents('/usr/local/bin')) --> {'usr', 'local', 'bin'}
+		R.split('.', 'a.b.c.xyz.d') --> {'a', 'b', 'c', 'xyz', 'd'}
+]]
+R.split = _curry2(function(sep, str)
+	local fields = {}
+	local size = R.size(sep)
+	if size <= 0 then return {str} end 
+	local pin = 1
+	local seq = ""
+	while pin <= R.size(str) do
+		local toMatch = string.sub(str, pin, pin + size - 1)
+		if R.same(toMatch, sep) then
+			fields[#fields + 1] = seq
+			pin = pin + size
+			seq = ""
+		else
+			pin = pin + 1
+			seq = seq .. R.head(toMatch)
+		end       
+	end
+	fields[#fields + 1] = seq
+    return fields
+end)
+
+--[[
+	Splits a given list or string at a given index.
+	
+	@func
+	@category Array
+	@sig Number -> [a] -> [ [a], [a] ]
+	@sig Number -> String -> [String, String]
+	@param {Number} index The index where the array/string is split.
+	@param {Array|String} array The array/string to be split.
+	@return {Array}
+	@example	
+		R.splitAt(2, {1, 2, 3})          --> {{1}, {2, 3}}
+		R.splitAt(6, 'hello world')      --> {'hello', ' world'}
+		R.splitAt(-1, 'foobar')          --> {'fooba', 'r'}
+]]
+R.splitAt = _curry2(function(index, array)
+	return {
+		R.slice(1, index, array),
+		R.slice(index, #array + 1, array)
+	}
+end)
+
+--[[
+	Splits a collection into slices of the specified length.
+	
+	@func
+	@category Array
+	@sig Number -> [a] -> [ [a] ]
+	@sig Number -> String -> [String]
+	@param {Number} n
+	@param {Array} list
+	@return {Array}
+	@example	
+		R.splitEvery(3, {1, 2, 3, 4, 5, 6, 7}) --> {{1, 2, 3}, {4, 5, 6}, {7}}
+		R.splitEvery(3, 'foobarbaz') --> {'foo', 'bar', 'baz'}
+]]
+R.splitEvery = _curry2(function(n, list)
+	if n <= 0 then
+		error('<lamda_error> splitEvery:: First argument to splitEvery must be a positive integer')
+	end
+	local result = {}
+	local idx = 1
+	while idx <= #list do
+		result[#result + 1] = R.slice(idx, idx + n, list)
+		idx = idx + n
+	end
+	return result
+end)
+
+--[[
+	Takes a list and a predicate and returns a pair of lists with the following properties:
+	
+	- the result of concatenating the two output lists is equivalent to the input list
+	- none of the elements of the first output list satisfies the predicate and
+	- if the second output list is non-empty, its first element satisfies the predicate.
+	
+	@func
+	@category Array
+	@sig (a -> Boolean) -> [a] -> [ [a], [a] ]
+	@param {Function} pred The predicate that determines where the array is split.
+	@param {Array} list The array to be split.
+	@return {Array}
+	@example	
+		R.splitWhen(R.equals(2), {1, 2, 3, 1, 2, 3})   --> {{1}, {2, 3, 1, 2, 3}}
+]]
+R.splitWhen = _curry2(function(pred, list)
+	local idx = 1
+	local len = R.size(list)
+	local prefix
+	if _isString(list) then
+		prefix = ""
+		while idx <= len and not pred(_get(idx, list)) do
+			prefix = prefix .. _get(idx, list)
+			idx = idx + 1
+		end
+	else
+		prefix = {}
+		while idx <= len and not pred(list[idx]) do
+			prefix[#prefix + 1] = list[idx]
+			idx = idx + 1
+		end
+	end
+	return {
+		prefix,
+		R.slice(idx, #list + 1, list)
+	}
+end)
+
+--[[
+	Adds together all the elements of a list.
+	
+	@func
+	@category Math
+	@sig [Number] -> Number
+	@param {Array} list An array of numbers
+	@return {Number} The sum of all the numbers in the list.
+	@see R.reduce
+	@example	
+		R.sum({2,4,6,8,100,1}) --> 121
+]]
+R.sum = R.reduce(R.add, 0)
+
+--[[
+	Returns all but the first element of the given list or string (or object
+	with a `tail` method).
+
+	Dispatches to the `slice` method of the first argument, if present.
+
+	@func
+	@category Array
+	@sig [a] -> [a]
+	@sig String -> String
+	@param {*} list
+	@return {*}
+	@see R.head, R.init, R.last
+	@example
+		R.tail({1, 2, 3})  --> {2, 3}
+		R.tail({1, 2})     --> {2}
+		R.tail({1})        --> {}
+		R.tail({})         --> {}
+
+		R.tail('abc')  --> 'bc'
+		R.tail('ab')   --> 'b'
+		R.tail('a')    --> ''
+		R.tail('')     --> ''
+]]
+R.tail = R.slice(2, 0)
 
 --[[
 	Returns the first `n` elements of the given list, string
@@ -4925,6 +5612,26 @@ end)
 -- ================ String Functions ================
 -- ==================================================
 --[[
+	Checks if a list ends with the provided values
+	
+	@func
+	@category String
+	@sig [a] -> Boolean
+	@sig String -> Boolean
+	@param {*} suffix
+	@param {*} list
+	@return {Boolean}
+	@example	
+		R.endsWith('c', 'abc')                --> true
+		R.endsWith('b', 'abc')                --> false
+		R.endsWith({'c'}, {'a', 'b', 'c'})    --> true
+		R.endsWith({'b'}, {'a', 'b', 'c'})    --> false
+]]
+R.endsWith = _curry2(function (suffix, list)
+	return R.equals(R.takeLast(#suffix, list), suffix)
+end)
+
+--[[
 	Returns a string made by inserting the `separator` between each element and
 	concatenating all the elements into a single string.
 	
@@ -4965,6 +5672,46 @@ R.match = _curry2(function(rx, str)
 		r[#r + 1] = w
 	end
 	return r
+end)
+
+--[[
+	Replace a substring or regex match in a string with a replacement.
+	
+	@func
+	@category String
+	@sig String|String -> String -> String -> String
+	@param {String|String} pattern A regular expression or a substring to match.
+	@param {String} replacement The string to replace the matches with.
+	@param {String} str The String to do the search and replacement in.
+	@return {String} The result.
+	@example	
+		R.replace('foo', 'bar', 1, 'foo foo foo') --> 'bar foo foo'
+		R.replace('foo', 'bar', 0, 'foo foo foo') --> 'bar bar bar'
+]]
+R.replace = _curryN(4, {}, function(regex, replacement, count, str)
+	if count < 1 then count = nil end
+	if count == R.NIL then count = nil end
+	return string.gsub(str, regex, replacement, count)
+end)
+
+--[[
+	Checks if a list starts with the provided values
+	
+	@func
+	@category String
+	@sig [a] -> Boolean
+	@sig String -> Boolean
+	@param {*} prefix
+	@param {*} list
+	@return {Boolean}
+	@example	
+		R.startsWith('a', 'abc')                --> true
+		R.startsWith('b', 'abc')                --> false
+		R.startsWith({'a'}, {'a', 'b', 'c'})    --> true
+		R.startsWith({'b'}, {'a', 'b', 'c'})    --> false
+]]
+R.startsWith = _curry2(function (prefix, list)
+	return R.equals(R.take(R.size(prefix), list), prefix)
 end)
 
 --[[
@@ -5265,814 +6012,38 @@ end
 
 
 
---[[
-     Splits a list into sub-lists stored in an object, based on the result of
-     calling a String-returning function on each element, and grouping the
-     results according to values returned.
-     
-     Dispatches to the `groupBy` method of the second argument, if present.
-     
-     Acts as a transducer if a transformer is given in list position.
-     
-     @func
-
-     @since v0.1.0
-     @category Array
-     @sig (a -> String) -> [a] -> {String: [a]}
-     @param {Function} fn Function :: a -> String
-     @param {Array} list The array to group
-     @return {Object} An object with the output of `fn` for keys, mapped to arrays of elements
-             that produced that key when passed to `fn`.
-     
-     @example
-     
-          local byGrade = R.groupBy(function(student) {
-            local score = student.score
-            return score < 65 ? 'F' :
-                   score < 70 ? 'D' :
-                   score < 80 ? 'C' :
-                   score < 90 ? 'B' = 'A'
-          })
-          local students = [{name = 'Abby', score: 84},
-                          {name = 'Eddy', score: 58},
-                          -- ...
-                          {name = 'Jack', score: 69}]
-          byGrade(students)
-          -- {
-          --   'A': [{name = 'Dianne', score: 99}],
-          --   'B': [{name = 'Abby', score: 84}]
-          --   -- ...,
-          --   'F': [{name = 'Eddy', score: 58}]
-          -- }
-]]
-R.groupBy = _curry2(R.reduceBy(function (acc, item)
-	if acc == nil then
-		acc = {}
-	end
-	acc[#acc + 1] = item
-	return acc
-end, nil))
-
---[[
-     Given a function that generates a key, turns a list of objects into an
-     object indexing the objects by the given key. Note that if multiple
-     objects generate the same value for the indexing key only the last value
-     will be included in the generated object.
-     
-     Acts as a transducer if a transformer is given in list position.
-     
-     @func
-
-     @since v0.19.0
-     @category Array
-     @sig (a -> String) -> [{k: v}] -> {k: {k: v}}
-     @param {Function} fn Function :: a -> String
-     @param {Array} array The array of objects to index
-     @return {Object} An object indexing each array element by the given property.
-     @example
-     
-          local list = [{id = 'xyz', title = 'A'}, {id = 'abc', title = 'B'}]
-          R.indexBy(R.prop('id'), list)
-          --> {abc: {id = 'abc', title = 'B'}, xyz: {id = 'xyz', title = 'A'}}
-]]
-R.indexBy = R.reduceBy(function (acc, elem)
-	return elem
-end, null)
 
 
 
---[[
-     Returns a single item by iterating through the list, successively calling
-     the iterator function and passing it an accumulator value and the current
-     value from the array, and then passing the result to the next call.
-     
-     Similar to [`reduce`](#reduce), except moves through the input list from the
-     right to the left.
-     
-     The iterator function receives two values: *(value, acc)*, while the arguments'
-     order of `reduce`'s iterator function is *(acc, value)*.
-     
-     Note: `R.reduceRight` does not skip deleted or unassigned indices (sparse
-     arrays), unlike the native `Array.prototype.reduceRight` method. For more details
-     on this behavior, see:
-     https:--developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduceRight#Description
-     
-     @func
-
-     @since v0.1.0
-     @category Array
-     @sig (a, b -> b) -> b -> [a] -> b
-     @param {Function} fn The iterator function. Receives two values, the current element from the array
-            and the accumulator.
-     @param {*} acc The accumulator value.
-     @param {Array} list The list to iterate over.
-     @return {*} The final, accumulated value.
-     @see R.reduce, R.addIndex
-     @example
-     
-          R.reduceRight(R.subtract, 0, [1, 2, 3, 4]) --> (1 - (2 - (3 - (4 - 0)))) = -2
-              -               -2
-             / \              / \
-            1   -            1   3
-               / \              / \
-              2   -     ==>    2  -1
-                 / \              / \
-                3   -            3   4
-                   / \              / \
-                  4   0            4   0
-     
-     @symb R.reduceRight(f, a, [b, c, d]) = f(b, f(c, f(d, a)))
-]]
-R.reduceRight = _curry3(function(fn, acc, list)
-	local idx = #list
-	while idx > 0 do
-		acc = fn(list[idx], acc)
-		idx = idx - 1
-	end
-	return acc
-end)
-
-
---[[
-     Like [`reduce`](#reduce), `reduceWhile` returns a single item by iterating
-     through the list, successively calling the iterator function. `reduceWhile`
-     also takes a predicate that is evaluated before each step. If the predicate
-     returns `false`, it "short-circuits" the iteration and returns the current
-     value of the accumulator.
-     
-     @func
-
-     @since v0.22.0
-     @category Array
-     @sig ((a, b) -> Boolean) -> ((a, b) -> a) -> a -> [b] -> a
-     @param {Function} pred The predicate. It is passed the accumulator and the
-            current element.
-     @param {Function} fn The iterator function. Receives two values, the
-            accumulator and the current element.
-     @param {*} a The accumulator value.
-     @param {Array} list The list to iterate over.
-     @return {*} The final, accumulated value.
-     @see R.reduce, R.reduced
-     @example
-     
-          local isOdd = (acc, x) => x % 2 === 1
-          local xs = [1, 3, 5, 60, 777, 800]
-          R.reduceWhile(isOdd, R.add, 0, xs) --> 9
-     
-          local ys = [2, 4, 6]
-          R.reduceWhile(isOdd, R.add, 111, ys) --> 111
-]]
-R.reduceWhile = _curryN(4, {}, function(pred, fn, a, list)
-	return _reduce(function (acc, x)
-		return pred(acc, x) and fn(acc, x) or _reduced(acc)
-	end, a, list)
-end)
-
---[[
-     The complement of [`filter`](#filter).
-     
-     Acts as a transducer if a transformer is given in list position. Filterable
-     objects include plain objects or any object that has a filter method such
-     as `Array`.
-     
-     @func
-
-     @since v0.1.0
-     @category Array
-     @sig Filterable f => (a -> Boolean) -> f a -> f a
-     @param {Function} pred
-     @param {Array} filterable
-     @return {Array}
-     @see R.filter, R.transduce, R.addIndex
-     @example
-     
-          local isOdd = (n) => n % 2 === 1
-     
-          R.reject(isOdd, [1, 2, 3, 4]) --> [2, 4]
-     
-          R.reject(isOdd, {a: 1, b: 2, c: 3, d: 4}) --> {b: 2, d: 4}
-]]
-R.reject = _curry2(function(pred, filterable)
-	return R.filter(_complement(pred), filterable)
-end)
-
---[[
-     Takes a predicate and a list or other `Filterable` object and returns the
-     pair of filterable objects of the same type of elements which do and do not
-     satisfy, the predicate, respectively. Filterable objects include plain objects or any object
-     that has a filter method such as `Array`.
-     
-     @func
-
-     @since v0.1.4
-     @category Array
-     @sig Filterable f => (a -> Boolean) -> f a -> [f a, f a]
-     @param {Function} pred A predicate to determine which side the element belongs to.
-     @param {Array} filterable the list (or other filterable) to partition.
-     @return {Array} An array, containing first the subset of elements that satisfy the
-             predicate, and second the subset of elements that do not satisfy.
-     @see R.filter, R.reject
-     @example
-     
-          R.partition(R.contains('s'), ['sss', 'ttt', 'foo', 'bars'])
-          --> [ [ 'sss', 'bars' ],  [ 'ttt', 'foo' ] ]
-     
-          R.partition(R.contains('s'), { a = 'sss', b = 'ttt', foo = 'bars' })
-          --> [ { a = 'sss', foo = 'bars' }, { b = 'ttt' }  ]
-]]
-R.partition = R.juxt({
-	R.filter,
-	R.reject
-})
-
---[[
-     Removes the sub-list of `list` starting at index `start` and containing
-     `count` elements. _Note that this is not destructive_: it returns a copy of
-     the list with the changes.
-     <small>No lists have been harmed in the application of this function.</small>
-     
-     @func
-
-     @since v0.2.2
-     @category Array
-     @sig Number -> Number -> [a] -> [a]
-     @param {Number} start The position to start removing elements
-     @param {Number} count The number of elements to remove
-     @param {Array} list The list to remove from
-     @return {Array} A new Array with `count` elements from `start` removed.
-     @example
-     
-          R.remove(2, 3, [1,2,3,4,5,6,7,8]) --> [1,2,6,7,8]
-]]
-R.remove = _curry3(function(start, count, list)
-	local result = R.slice(1, start, list)
-	return R.concat(result, R.slice(start + count, #list + 1, list))
-end)
-
---[[
-     Returns a fixed list of size `n` containing a specified identical value.
-     
-     @func
-
-     @since v0.1.1
-     @category Array
-     @sig a -> n -> [a]
-     @param {*} value The value to repeat.
-     @param {Number} n The desired size of the output list.
-     @return {Array} A new array containing `n` `value`s.
-     @see R.times
-     @example
-     
-          R.repeat('hi', 5) --> ['hi', 'hi', 'hi', 'hi', 'hi']
-     
-          local obj = {}
-          local repeatedObjs = R.repeat(obj, 5) --> [{}, {}, {}, {}, {}]
-          repeatedObjs[0] === repeatedObjs[1] --> true
-     @symb R.repeat(a, 0) = []
-     @symb R.repeat(a, 1) = [a]
-     @symb R.repeat(a, 2) = [a, a]
-]]
-R.repeat_ = _curry2(function(value, n)
-	return R.times(R.always(value), n)
-end)
-
---[[
-     Replace a substring or regex match in a string with a replacement.
-     
-     @func
-
-     @since v0.7.0
-     @category String
-     @sig String|String -> String -> String -> String
-     @param {String|String} pattern A regular expression or a substring to match.
-     @param {String} replacement The string to replace the matches with.
-     @param {String} str The String to do the search and replacement in.
-     @return {String} The result.
-     @example
-     
-          R.replace('foo', 'bar', 'foo foo foo') --> 'bar foo foo'
-          R.replace(/foo/, 'bar', 'foo foo foo') --> 'bar foo foo'
-     
-          -- Use the "g" (global) flag to replace all occurrences:
-          R.replace(/foo/g, 'bar', 'foo foo foo') --> 'bar bar bar'
-]]
-R.replace = _curry3(function(regex, replacement, str)
-	return string.gsub(str, regex, replacement, 1)
-end)
-R.replaceAll = _curry3(function(regex, replacement, str)
-	return string.gsub(str, regex, replacement)
-end)
-
---[[
-     Returns a new list or string with the elements or characters in reverse
-     order.
-     
-     @func
-
-     @since v0.1.0
-     @category Array
-     @sig [a] -> [a]
-     @sig String -> String
-     @param {Array|String} list
-     @return {Array|String}
-     @example
-     
-          R.reverse([1, 2, 3])  --> [3, 2, 1]
-          R.reverse([1, 2])     --> [2, 1]
-          R.reverse([1])        --> [1]
-          R.reverse([])         --> []
-     
-          R.reverse('abc')      --> 'cba'
-          R.reverse('ab')       --> 'ba'
-          R.reverse('a')        --> 'a'
-          R.reverse('')         --> ''
-]]
-R.reverse = _curry1(function(list)
-	if _isString(list) then
-		return string.reverse(list)
-	else
-		local result = {}
-		for i = #list,1,-1 do
-			result[#result + 1] = list[i]
-		end
-		return result
-	end
-end)
-
---[[
-     Scan is similar to [`reduce`](#reduce), but returns a list of successively
-     reduced values from the left
-     
-     @func
-
-     @since v0.10.0
-     @category Array
-     @sig (a,b -> a) -> a -> [b] -> [a]
-     @param {Function} fn The iterator function. Receives two values, the accumulator and the
-            current element from the array
-     @param {*} acc The accumulator value.
-     @param {Array} list The list to iterate over.
-     @return {Array} A list of all intermediately reduced values.
-     @see R.reduce
-     @example
-     
-          local numbers = [1, 2, 3, 4]
-          local factorials = R.scan(R.multiply, 1, numbers) --> [1, 1, 2, 6, 24]
-     @symb R.scan(f, a, [b, c]) = [a, f(a, b), f(f(a, b), c)]
-]]
-R.scan = _curry3(function(fn, acc, list)
-	local idx = 1
-	local len = #list
-	local result = {acc}
-	while idx <= len do
-		acc = fn(acc, list[idx])
-		result[idx + 1] = acc
-		idx = idx + 1
-	end
-	return result
-end)
-
---[[
-     Returns the result of "setting" the portion of the given data structure
-     focused by the given lens to the given value.
-     
-     @func
-
-     @since v0.16.0
-     @category Object
-     @typedefn Lens s a = Functor f => (a -> f a) -> s -> f s
-     @sig Lens s a -> a -> s -> s
-     @param {Lens} lens
-     @param {*} v
-     @param {*} x
-     @return {*}
-     @see R.prop, R.lensIndex, R.lensProp
-     @example
-     
-          local xLens = R.lensProp('x')
-     
-          R.set(xLens, 4, {x: 1, y: 2})  --> {x: 4, y: 2}
-          R.set(xLens, 8, {x: 1, y: 2})  --> {x: 8, y: 2}
-]]
-R.set = _curry3(function(lens, v, x)
-	return R.over(lens, R.always(v), x)
-end)
 
 
 
---[[
-     Returns all but the last element of the given list or string.
-     
-     @func
 
-     @since v0.9.0
-     @category Array
-     @sig [a] -> [a]
-     @sig String -> String
-     @param {*} list
-     @return {*}
-     @see R.last, R.head, R.tail
-     @example
-     
-          R.init([1, 2, 3])  --> [1, 2]
-          R.init([1, 2])     --> [1]
-          R.init([1])        --> []
-          R.init([])         --> []
-     
-          R.init('abc')  --> 'ab'
-          R.init('ab')   --> 'a'
-          R.init('a')    --> ''
-          R.init('')     --> ''
-]]
-R.init = R.slice(1, -1)
 
---[[
-     Returns a copy of the list, sorted according to the comparator function,
-     which should accept two values at a time and return a negative number if the
-     first value is smaller, a positive number if it's larger, and zero if they
-     are equal. Please note that this is a **copy** of the list. It does not
-     modify the original.
-     
-     @func
 
-     @since v0.1.0
-     @category Array
-     @sig (a,a -> Number) -> [a] -> [a]
-     @param {Function} comparator A sorting function :: a -> b -> Int
-     @param {Array} list The list to sort
-     @return {Array} a new array with its elements sorted by the comparator function.
-     @example
-     
-          local diff = function(a, b) { return a - b }
-          R.sort(diff, [4,2,7,5]) --> [2, 4, 5, 7]
-]]
-R.sort = _curry2(function(comparator, list)
-	local _l = R.clone(list)
-	table.sort(_l, comparator)
-	return _l
-end)
 
---[[
-	Sorts the list according to the supplied function.
-	
-	@func
-	@category Array
-	@sig Ord b => (a -> b) -> [a] -> [a]
-	@param {Function} fn
-	@param {Array} list The list to sort.
-	@return {Array} A new list sorted by the keys generated by `fn`.
-	@example	
-		local sortByFirstItem = R.sortBy(R.prop(0))
-		local sortByNameCaseInsensitive = R.sortBy(R.compose(R.toLower, R.prop('name')))
-		local pairs = {{-1, 1}, {-2, 2}, {-3, 3}}
-		sortByFirstItem(pairs) -->  {{-3, 3}, {-2, 2}, {-1, 1}}
-		local alice = {
-			name = 'ALICE',
-			age = 101
-		}
-		local bob = {
-			name = 'Bob',
-			age = -10
-		}
-		local clara = {
-			name = 'clara',
-			age = 314.159
-		}
-		local people = {clara, bob, alice}
-		sortByNameCaseInsensitive(people) --> {alice, bob, clara}
-]]
-R.sortBy = _curry2(function(fn, list)
-	local _l = R.clone(list)
-	table.sort(_l, function (a, b)
-		local aa = fn(a)
-		local bb = fn(b)
-		return aa < bb
-	end)
-	return _l
-end)
 
---[[
-     Sorts a list according to a list of comparators.
-     
-     @func
 
-     @since v0.23.0
-     @category Util
-     @sig [a -> a -> Number] -> [a] -> [a]
-     @param {Array} functions A list of comparator functions.
-     @param {Array} list The list to sort.
-     @return {Array} A new list sorted according to the comarator functions.
-     @example
-     
-          local alice = {
-            name = 'alice',
-            age = 40
-          }
-          local bob = {
-            name = 'bob',
-            age = 30
-          }
-          local clara = {
-            name = 'clara',
-            age = 40
-          }
-          local people = [clara, bob, alice]
-          local ageNameSort = R.sortWith([
-            R.descend(R.prop('age')),
-            R.ascend(R.prop('name'))
-          ])
-          ageNameSort(people) --> [alice, clara, bob]
-]]
-R.sortWith = _curry2(function(fns, list)
-	local _l = R.clone(list)
-	table.sort(_l, function (a, b)
-		local result = 0
-		local i = 1
-		while result == 0 and i <= #fns do
-			result = fns[i](a, b)
-			i = i + 1
-		end
-		return result < 0
-	end)
-	return _l
-end)
 
---[[
-     Splits a string into an array of strings based on the given
-     separator.
-     
-     @func
 
-     @since v0.1.0
-     @category String
-     @sig (String | String) -> String -> [String]
-     @param {String|String} sep The pattern.
-     @param {String} str The string to separate into an array.
-     @return {Array} The array of strings from `str` separated by `str`.
-     @see R.join
-     @example
-     
-          local pathComponents = R.split('/')
-          R.tail(pathComponents('/usr/local/bin/node')) --> ['usr', 'local', 'bin', 'node']
-     
-          R.split('.', 'a.b.c.xyz.d') --> ['a', 'b', 'c', 'xyz', 'd']
-]]
-R.split = _curry2(function(sep, str)
-	local fields = {}
-    str:gsub("[^"..sep.."]+", function(c) 
-        fields[#fields + 1] = c 
-    end)
-    return fields
-end)
 
---[[
-     Splits a given list or string at a given index.
-     
-     @func
 
-     @since v0.19.0
-     @category Array
-     @sig Number -> [a] -> [ [a], [a] ]
-     @sig Number -> String -> [String, String]
-     @param {Number} index The index where the array/string is split.
-     @param {Array|String} array The array/string to be split.
-     @return {Array}
-     @example
-     
-          R.splitAt(1, [1, 2, 3])          --> [ [1], [2, 3] ]
-          R.splitAt(5, 'hello world')      --> ['hello', ' world']
-          R.splitAt(-1, 'foobar')          --> ['fooba', 'r']
-]]
-R.splitAt = _curry2(function(index, array)
-	return {
-		R.slice(1, index, array),
-		R.slice(index, #array + 1, array)
-	}
-end)
 
---[[
-     Splits a collection into slices of the specified length.
-     
-     @func
 
-     @since v0.16.0
-     @category Array
-     @sig Number -> [a] -> [ [a] ]
-     @sig Number -> String -> [String]
-     @param {Number} n
-     @param {Array} list
-     @return {Array}
-     @example
-     
-          R.splitEvery(3, [1, 2, 3, 4, 5, 6, 7]) --> [ [1, 2, 3], [4, 5, 6], [7] ]
-          R.splitEvery(3, 'foobarbaz') --> ['foo', 'bar', 'baz']
-]]
-R.splitEvery = _curry2(function(n, list)
-	if n <= 0 then
-		error('<lamda_error> splitEvery:: First argument to splitEvery must be a positive integer')
-	end
-	local result = {}
-	local idx = 1
-	while idx <= #list do
-		result[#result + 1] = R.slice(idx, idx + n + 1, list)
-		idx = idx + n + 1
-	end
-	return result
-end)
 
---[[
-     Takes a list and a predicate and returns a pair of lists with the following properties:
-     
-      - the result of concatenating the two output lists is equivalent to the input list
-      - none of the elements of the first output list satisfies the predicate and
-      - if the second output list is non-empty, its first element satisfies the predicate.
-     
-     @func
 
-     @since v0.19.0
-     @category Array
-     @sig (a -> Boolean) -> [a] -> [ [a], [a] ]
-     @param {Function} pred The predicate that determines where the array is split.
-     @param {Array} list The array to be split.
-     @return {Array}
-     @example
-     
-          R.splitWhen(R.equals(2), [1, 2, 3, 1, 2, 3])   --> [ [1], [2, 3, 1, 2, 3] ]
-]]
-R.splitWhen = _curry2(function(pred, list)
-	local idx = 1
-	local len = #list
-	local prefix = {}
-	while idx <= len and not pred(list[idx]) do
-		prefix[#prefix + 1] = list[idx]
-		idx = idx + 1
-	end
-	return {
-		prefix,
-		R.slice(idx, #list + 1, list)
-	}
-end)
 
---[[
-     Checks if a list starts with the provided values
-     
-     @func
 
-     @since v0.24.0
-     @category Array
-     @sig [a] -> Boolean
-     @sig String -> Boolean
-     @param {*} prefix
-     @param {*} list
-     @return {Boolean}
-     @example
-     
-          R.startsWith('a', 'abc')                --> true
-          R.startsWith('b', 'abc')                --> false
-          R.startsWith(['a'], ['a', 'b', 'c'])    --> true
-          R.startsWith(['b'], ['a', 'b', 'c'])    --> false
-]]
-R.startsWith = _curry2(function (prefix, list)
-	return R.equals(R.take(R.size(prefix), list), prefix)
-end)
 
---[[
-     Adds together all the elements of a list.
-     
-     @func
 
-     @since v0.1.0
-     @category Math
-     @sig [Number] -> Number
-     @param {Array} list An array of numbers
-     @return {Number} The sum of all the numbers in the list.
-     @see R.reduce
-     @example
-     
-          R.sum([2,4,6,8,100,1]) --> 121
-]]
-R.sum = R.reduce(R.add, 0)
 
---[[
-     Returns the mean of the given list of numbers.
-     
-     @func
 
-     @since v0.14.0
-     @category Math
-     @sig [Number] -> Number
-     @param {Array} list
-     @return {Number}
-     @see R.median
-     @example
-     
-          R.mean([2, 7, 9]) --> 6
-          R.mean([]) --> NaN
-]]
-R.mean = _curry1(function(list)
-	return R.sum(list) / #list
-end)
 
---[[
-     Returns the median of the given list of numbers.
-     
-     @func
 
-     @since v0.14.0
-     @category Math
-     @sig [Number] -> Number
-     @param {Array} list
-     @return {Number}
-     @see R.mean
-     @example
-     
-          R.median([2, 9, 7]) --> 7
-          R.median([7, 2, 10, 9]) --> 8
-          R.median([]) --> NaN
-]]
-R.median = _curry1(function(list)
-	local len = #list
-	if len == 0 then
-		return nil
-	end
-	local width = 2 - len % 2
-	local idx = (len - width) / 2 + 1
-	return R.mean(R.slice(idx, idx + width + 1, R.sort(R.lt, list)))
-end)
 
---[[
-     Finds the set (i.e. no duplicates) of all elements contained in the first or
-     second list, but not both.
-     
-     @func
 
-     @since v0.19.0
-     @category Util
-     @sig [*] -> [*] -> [*]
-     @param {Array} list1 The first list.
-     @param {Array} list2 The second list.
-     @return {Array} The elements in `list1` or `list2`, but not both.
-     @see R.symmetricDifferenceWith, R.difference, R.differenceWith
-     @example
-     
-          R.symmetricDifference([1,2,3,4], [7,6,5,4,3]) --> [1,2,7,6,5]
-          R.symmetricDifference([7,6,5,4,3], [1,2,3,4]) --> [7,6,5,1,2]
-]]
-R.symmetricDifference = _curry2(function(list1, list2)
-	return R.concat(R.difference(list1, list2), R.difference(list2, list1))
-end)
 
---[[
-     Finds the set (i.e. no duplicates) of all elements contained in the first or
-     second list, but not both. Duplication is determined according to the value
-     returned by applying the supplied predicate to two list elements.
-     
-     @func
 
-     @since v0.19.0
-     @category Util
-     @sig ((a, a) -> Boolean) -> [a] -> [a] -> [a]
-     @param {Function} pred A predicate used to test whether two items are equal.
-     @param {Array} list1 The first list.
-     @param {Array} list2 The second list.
-     @return {Array} The elements in `list1` or `list2`, but not both.
-     @see R.symmetricDifference, R.difference, R.differenceWith
-     @example
-     
-          local eqA = R.eqBy(R.prop('a'))
-          local l1 = [{a: 1}, {a: 2}, {a: 3}, {a: 4}]
-          local l2 = [{a: 3}, {a: 4}, {a: 5}, {a: 6}]
-          R.symmetricDifferenceWith(eqA, l1, l2) --> [{a: 1}, {a: 2}, {a: 5}, {a: 6}]
-]]
-R.symmetricDifferenceWith = _curry3(function(pred, list1, list2)
-	return R.concat(R.differenceWith(pred, list1, list2), R.differenceWith(pred, list2, list1))
-end)
-
---[[
-	Returns all but the first element of the given list or string (or object
-	with a `tail` method).
-	
-	Dispatches to the `slice` method of the first argument, if present.
-	
-	@func
-	@category Array
-	@sig [a] -> [a]
-	@sig String -> String
-	@param {*} list
-	@return {*}
-	@see R.head, R.init, R.last
-	@example
-		R.tail({1, 2, 3})  --> {2, 3}
-		R.tail({1, 2})     --> {2}
-		R.tail({1})        --> {}
-		R.tail({})         --> {}
-	
-		R.tail('abc')  --> 'bc'
-		R.tail('ab')   --> 'b'
-		R.tail('a')    --> ''
-		R.tail('')     --> ''
-]]
-R.tail = R.slice(2, 0)
 
 
 
@@ -6102,28 +6073,7 @@ R.takeLast = _curry2(function(n, xs)
 	return R.drop(n >= 1 and #xs - n + 1 or 0, xs)
 end)
 
---[[
-     Checks if a list ends with the provided values
-     
-     @func
 
-     @since v0.24.0
-     @category Array
-     @sig [a] -> Boolean
-     @sig String -> Boolean
-     @param {*} suffix
-     @param {*} list
-     @return {Boolean}
-     @example
-     
-          R.endsWith('c', 'abc')                --> true
-          R.endsWith('b', 'abc')                --> false
-          R.endsWith(['c'], ['a', 'b', 'c'])    --> true
-          R.endsWith(['b'], ['a', 'b', 'c'])    --> false
-]]
-R.endsWith = _curry2(function (suffix, list)
-	return R.equals(R.takeLast(#suffix, list), suffix)
-end)
 
 --[[
      Returns a new list containing the last `n` elements of a given list, passing
@@ -6140,7 +6090,7 @@ end)
      @param {Function} fn The function called per iteration.
      @param {Array} list The collection to iterate over.
      @return {Array} A new array.
-     @see R.dropLastWhile, R.addIndex
+     @see R.dropLastWhile
      @example
      
           local isNotOne = x => x !== 1
@@ -6169,13 +6119,13 @@ end)
      
      @func
 
-     @since v0.1.0
+     
      @category Array
      @sig (a -> Boolean) -> [a] -> [a]
      @param {Function} fn The function called per iteration.
      @param {Array} list The collection to iterate over.
      @return {Array} A new array.
-     @see R.dropWhile, R.transduce, R.addIndex
+     @see R.dropWhile
      @example
      
           local isNotFour = x => x !== 4
@@ -6195,7 +6145,7 @@ end)
      
      @func
 
-     @since v0.1.0
+     
      @category Function
      @sig (a -> *) -> a -> a
      @param {Function} fn The function to call with `x`. The return value of `fn` will be thrown away.
@@ -6492,7 +6442,7 @@ end)
      
      @func
 
-     @since v0.1.0
+     
      @category Array
      @sig [a] -> [a]
      @param {Array} list The array to consider.
@@ -6548,7 +6498,7 @@ end)
      
      @func
 
-     @since v0.1.0
+     
      @category Util
      @sig [*] -> [*] -> [*]
      @param {Array} as The first list.
@@ -6568,7 +6518,7 @@ R.union = _curry2(R.pipe(_concat, R.uniq))
      
      @func
 
-     @since v0.1.0
+     
      @category Util
      @sig (a -> a -> Boolean) -> [*] -> [*] -> [*]
      @param {Function} pred A predicate used to test whether two items are equal.
@@ -6593,7 +6543,7 @@ end)
      
      @func
 
-     @since v0.1.0
+     
      @category Util
      @sig [*] -> [*] -> [*]
      @param {Array} list1 The first list.
@@ -6732,7 +6682,7 @@ R.unnest = R.chain(_identity)
      
      @func
 
-     @since v0.1.0
+     
      @category Function
      @sig (x1 -> x2 -> ... -> z) -> [(a -> x1), (b -> x2), ...] -> (a -> b -> ... -> z)
      @param {Function} fn The function to wrap.
@@ -6767,7 +6717,7 @@ end)
      
      @func
 
-     @since v0.1.0
+     
      @category Object
      @category Util
      @sig [k] -> [{k: v}] -> [{k: v}]
@@ -6962,7 +6912,7 @@ end)
      
      @func
 
-     @since v0.1.0
+     
      @category Array
      @sig [a] -> [b] -> [ [a,b] ] 
      @param {Array} as The first list.
@@ -7004,7 +6954,7 @@ end)
      
      @func
 
-     @since v0.1.0
+     
      @category Array
      @sig [a] -> [b] -> [ [a,b] ]
      @param {Array} list1 The first array to consider.

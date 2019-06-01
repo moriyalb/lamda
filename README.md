@@ -34,6 +34,10 @@ you can test the lamda function simple like
 	* You can write lua code in functional style. 	
 3. Auto curried  
 	* Most function is auto curried. Placeholder is also supported.
+
+# Ramda Version
+
+* Based on ramda@0.24.1
 	
 # Notice
 

@@ -389,4 +389,160 @@ function TestArray.test_reduceBy()
 	this.lu.assertEquals(namesByGrade(students), {A={"Lucy", "Leo"}, B={"Drew"}, F={"Bart"}})
 end
 
+function TestArray.test_groupBy()
+	local byGrade = R.groupBy(function(student) 
+		local score = student.score
+		return score < 65 and 'F' or
+				score < 70 and 'D' or
+				score < 80 and 'C' or
+				score < 90 and 'B' or 'A'
+	end)
+	local students = {{name = 'Lucy', score = 92},
+				{name = 'Drew', score = 85},
+				{name = 'Leo', score = 90},
+				{name = 'Bart', score = 62}}
+	this.lu.assertEquals(byGrade(students), {
+		A={{name="Lucy", score=92}, {name="Leo", score=90}},
+		B={{name="Drew", score=85}},
+		F={{name="Bart", score=62}}
+	})
+end
+
+function TestArray.test_indexBy()
+	local list = {{id = 'xyz', title = 'A'}, {id = 'abc', title = 'B'}}
+	this.lu.assertEquals(R.indexBy(R.prop('id'), list), {abc={id="abc", title="B"}, xyz={id="xyz", title="A"}})
+
+	list = {{id = 'xyz', title = 'A'}, {title = 'B'}}
+	this.lu.assertEquals(R.indexBy(R.prop('title'), list), {A={id="xyz", title="A"}, B={title="B"}})
+end
+
+function TestArray.test_reduceRight()
+	this.lu.assertEquals(R.reduceRight(R.subtract, 0, {1,2,3,4}), -2)
+end
+
+function TestArray.test_reduceWhile()
+	local isOdd = function(acc, x) return x%2 == 1 end
+	local xs = {1, 3, 5, 60, 777, 800}
+	this.lu.assertEquals(R.reduceWhile(isOdd, R.add, 0, xs), 9)
+
+	local ys = {2, 4, 6}
+	this.lu.assertEquals(R.reduceWhile(isOdd, R.add, 111, ys), 111)
+end
+
+function TestArray.test_reject()
+	local isOdd = R.o(R.equals(1), R.mod(R.__, 2))	
+	this.lu.assertEquals(R.reject(isOdd, {1, 2, 3, 4}), {2, 4})
+	this.lu.assertEquals(R.reject(isOdd, {a = 1, b = 2, c = 3, d = 4}), {b = 2, d = 4})
+end
+
+function TestArray.test_partition()
+	this.lu.assertEquals(R.partition(R.contains('s'), {'sss', 'ttt', 'foo', 'bars'}), {{'sss', 'bars'}, {'ttt', 'foo' }})
+	this.lu.assertEquals(R.partition(R.contains('s'), {a = 'sss', b = 'ttt', foo = 'bars'}), {{ a = 'sss', foo = 'bars' }, { b = 'ttt' }})
+	this.lu.assertEquals(R.partition(R.T,{}), {{},{}})
+	this.lu.assertEquals(R.partition(R.F,{}), {{},{}})
+end
+
+function TestArray.test_remove()
+	local list = {1,2,3,4,5,6,7,8}
+	this.lu.assertEquals(R.remove(2, 3, list), {1,5,6,7,8})
+	this.lu.assertEquals(R.remove(0, 3, list), {4,5,6,7,8})
+	this.lu.assertEquals(R.remove(0, 0, list), list)
+	this.lu.assertEquals(R.remove(1, -1, list), list)
+end
+
+function TestArray.test_repeat_()
+	this.lu.assertEquals(R.repeat_('hi', 5), {'hi', 'hi', 'hi', 'hi', 'hi'})
+	local obj = {}
+	local repeatedObjs = R.repeat_(obj, 5)
+	this.lu.assertTrue(R.same(repeatedObjs[1], repeatedObjs[2]))
+end
+
+function TestArray.test_reverse()
+	this.lu.assertEquals(R.reverse({1, 2, 3}), {3, 2, 1})
+	this.lu.assertEquals(R.reverse({1, 2}), {2, 1})
+	this.lu.assertEquals(R.reverse({1}), {1})
+	this.lu.assertEquals(R.reverse({}), {})
+
+	this.lu.assertEquals(R.reverse('abc'), 'cba')
+	this.lu.assertEquals(R.reverse('ab'), 'ba')
+	this.lu.assertEquals(R.reverse('a'), 'a')
+	this.lu.assertEquals(R.reverse(''), '')
+end
+
+function TestArray.test_scan()
+	local numbers = {1, 2, 3, 4}
+	this.lu.assertEquals(R.scan(R.multiply, 1, numbers), {1, 1, 2, 6, 24})
+end
+
+function TestArray.test_init_tail()
+	this.lu.assertEquals(R.init({1, 2, 3}), {1,2})
+	this.lu.assertEquals(R.init({1, 2}), {1})
+	this.lu.assertEquals(R.init({1}), {})
+	this.lu.assertEquals(R.init({}), {})
+
+	this.lu.assertEquals(R.init('abc'), 'ab')
+	this.lu.assertEquals(R.init('ab'), 'a')
+	this.lu.assertEquals(R.init('a'), '')
+	this.lu.assertEquals(R.init(''), '')
+
+	this.lu.assertEquals(R.tail({1, 2, 3}), {2,3})
+	this.lu.assertEquals(R.tail({1, 2}), {2})
+	this.lu.assertEquals(R.tail({1}), {})
+	this.lu.assertEquals(R.tail({}), {})
+
+	this.lu.assertEquals(R.tail('abc'), 'bc')
+	this.lu.assertEquals(R.tail('ab'), 'b')
+	this.lu.assertEquals(R.tail('a'), '')
+	this.lu.assertEquals(R.tail(''), '')
+end
+
+function TestArray.test_sort()
+	this.lu.assertEquals(R.sort(R.lt, {4,2,7,5}), {2,4,5,7})
+	this.lu.assertEquals(R.sort(R.gt, {4,2,7,5}), {7,5,4,2})
+
+	local alice = {
+		name = 'alice',
+		age = 40
+	}
+	local bob = {
+		name = 'bob',
+		age = 30
+	}
+	local clara = {
+		name = 'clara',
+		age = 40
+	}
+
+	local people = {clara, bob, alice}
+	local sortByNameUpper = R.sort(R.ascend(R.compose(R.toLower, R.prop('name'))))
+	local sortByNameUpperDescend = R.sort(R.descend(R.compose(R.toLower, R.prop('name'))))
+
+	this.lu.assertEquals(sortByNameUpper(people), {{age=40, name="alice"}, {age=30, name="bob"}, {age=40, name="clara"}})
+	this.lu.assertEquals(sortByNameUpperDescend(people), {{age=40, name="clara"}, {age=30, name="bob"}, {age=40, name="alice"}})
+
+	local ageNameSort = R.sortWith({
+		R.descend(R.prop('age')),
+		R.ascend(R.prop('name'))
+	})
+	this.lu.assertEquals(ageNameSort(people), {{age=40, name="alice"}, {age=40, name="clara"}, {age=30, name="bob"}})
+end
+
+function TestArray.test_splitAt()
+	this.lu.assertEquals(R.splitAt(2, {1, 2, 3}), {{1}, {2, 3}})
+	this.lu.assertEquals(R.splitAt(6, 'hello world'), {'hello', ' world'})
+	this.lu.assertEquals(R.splitAt(-1, 'foobar'), {'fooba', 'r'})
+end
+
+function TestArray.test_splitEvery()
+	this.lu.assertEquals(R.splitEvery(3, {1, 2, 3, 4, 5, 6, 7}), {{1, 2, 3}, {4, 5, 6}, {7}})
+	this.lu.assertEquals(R.splitEvery(3, 'foobarbaz'), {'foo', 'bar', 'baz'})
+end
+
+function TestArray.test_splitWhen()
+	this.lu.assertEquals(R.splitWhen(R.equals(2), {1, 2, 3, 1, 2, 3}), {{1}, {2, 3, 1, 2, 3}})
+	local isLower = function(c) return R.same(c, R.toLower(c)) end
+	this.lu.assertEquals(R.splitWhen(isLower, 'HELllo World'), {"HEL", "llo World"})
+end
+
+
 return TestArray

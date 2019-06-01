@@ -253,4 +253,21 @@ function TestUtil.test_countBy()
 	this.lu.assertEquals(R.count('a', "hello world") , 0)
 end
 
+function TestUtil.test_same()
+	this.lu.assertFalse(R.same({}, {}))
+	this.lu.assertTrue(R.same(1, 1))
+	this.lu.assertFalse(R.same(1, "1"))
+	local obj = {}
+	this.lu.assertTrue(R.same(obj, obj))
+end
+
+function TestUtil.test_symmetricDifference()
+	this.lu.assertEquals(R.symmetricDifference({1,2,3,4}, {7,6,5,4,3}), {1,2,7,6,5})
+	this.lu.assertEquals(R.symmetricDifference({7,6,5,4,3}, {1,2,3,4}), {7,6,5,1,2})
+	local eqA = R.eqBy(R.prop('a'))
+	local l1 = {{a=1}, {a=2}, {a=3}, {a=4}}
+	local l2 = {{a=3}, {a=4}, {a=5}, {a=6}}
+	this.lu.assertEquals(R.symmetricDifferenceWith(eqA, l1, l2), {{a=1}, {a=2}, {a=5}, {a=6}})
+end
+
 return TestUtil

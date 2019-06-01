@@ -235,7 +235,7 @@ end
 function TestFunc.test_map()
 	this.lu.assertEquals(R.map(R.add(3), {1,2,3}), {4,5,6})
 	this.lu.assertEquals(R.sort(R.lt, R.map(R.add(3), {a=1,b=2,c=3})), {4,5,6}) --map could not assume the key sequences
-	local revert_map = R.o(R.fromPairs, R.map(R.flip(R.pair))) 
+	local revert_map = R.compose(R.merge, R.unpack, R.map(R.flip(R.objOf)))
 	this.lu.assertEquals({a=1,b=2,c=3}, revert_map({a=1,b=2,c=3}))
 end
 

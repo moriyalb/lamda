@@ -74,4 +74,17 @@ function TestMath.test_product()
 	this.lu.assertEquals(R.product({}), 1)
 end
 
+function TestMath.test_sum()
+	this.lu.assertEquals(R.sum({1,2,5,10}), 18)
+	this.lu.assertEquals(R.sum({}), 0)
+end
+
+function TestMath.test_mean()
+	this.lu.assertAlmostEquals(R.mean({1,2,5,10}), 4.5)
+	this.lu.assertTrue(R.isNan(R.mean({})))
+
+	this.lu.assertAlmostEquals(R.median({1,2,5,10}), 3.5)
+	this.lu.assertTrue(R.isNan(R.median({})))
+end
+
 return TestMath

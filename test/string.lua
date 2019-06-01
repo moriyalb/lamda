@@ -23,4 +23,31 @@ function TestString.test_toUpper()
 	this.lu.assertEquals(R.toUpper(""), "")
 end
 
+function TestString.test_replace()
+	this.lu.assertEquals(R.replace('foo', 'bar', 1, 'foo foo foo'), 'bar foo foo')
+	this.lu.assertEquals(R.replace('foo', 'bar', 0, 'foo foo foo'), 'bar bar bar')
+end
+
+function TestString.test_split()
+	this.lu.assertEquals(R.split('hh', 'hhvvhhhvhvhhhhhhvvvhh'), {"", "vv", "hvhv", "", "", "vvv", ""})
+	local pathComponents = R.split('/')
+	this.lu.assertEquals(R.tail(pathComponents('/usr/local/bin')), {'usr', 'local', 'bin'})
+	this.lu.assertEquals(R.split('.', 'a.b.c.xyz.d'), {'a', 'b', 'c', 'xyz', 'd'})
+	this.lu.assertEquals(R.split('.......', ""), {""})
+end
+
+function TestString.test_startsWith()
+	this.lu.assertTrue(R.startsWith('a', 'abc'))
+	this.lu.assertFalse(R.startsWith('b', 'abc'))
+	this.lu.assertTrue(R.startsWith({'a'}, {'a', 'b', 'c'}))
+	this.lu.assertFalse(R.startsWith({'b'}, {'a', 'b', 'c'}))
+end
+
+function TestString.test_endsWith()
+	this.lu.assertFalse(R.endsWith('a', 'abc'))
+	this.lu.assertTrue(R.endsWith('c', 'abc'))
+	this.lu.assertFalse(R.endsWith({'a'}, {'a', 'b', 'c'}))
+	this.lu.assertTrue(R.endsWith({'c'}, {'a', 'b', 'c'}))
+end
+
 return TestString
