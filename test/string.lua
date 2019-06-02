@@ -50,4 +50,14 @@ function TestString.test_endsWith()
 	this.lu.assertTrue(R.endsWith({'c'}, {'a', 'b', 'c'}))
 end
 
+function TestString.test_test()
+	this.lu.assertTrue(R.test("^x", 'xyz'))
+	this.lu.assertFalse(R.test("^y", 'xyz'))
+end
+
+function TestString.test_trim()
+	this.lu.assertEquals(R.trim('   xyz  '), "xyz")
+	this.lu.assertEquals(R.map(R.strip, R.split(',', 'x, y, z')), {'x', 'y', 'z'})
+end
+
 return TestString

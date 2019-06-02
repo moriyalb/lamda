@@ -341,4 +341,20 @@ function TestFunc.test_mirror()
 	this.lu.assertEquals(R.mirrorBy(R.clone)({1,2,3}), {{1,2,3}, {1,2,3}})
 end
 
+function TestFunc.test_tap()
+	this.lu.assertEquals(R.tap(R.partial(R.show, "x is"), 100), 100)
+	local count = 1
+	local r = R.tap(function()
+		count = count + 1
+	end, count)
+	this.lu.assertEquals(count + r, 2 + 1)
+end
+
+function TestFunc.test_tryCatch()
+	this.lu.assertTrue(R.tryCatch(R.prop('x'), R.F)({x = true}))
+	this.lu.assertFalse(R.tryCatch(R.prop('x'), R.F, R.F)({x = true}))
+	this.lu.assertFalse(R.tryCatch(R.prop('x'), R.F)(1))
+	this.lu.assertTrue(R.tryCatch(R.prop('x'), R.F, R.T)(1))
+end
+
 return TestFunc

@@ -212,4 +212,9 @@ function TestObject.test_prop3()
 	this.lu.assertEquals(R.filter(hasBrownHair, kids), {{age=12, hair="brown", name="Fred"}, {age=10, hair="brown", name="Rusty"}})
 end
 
+function TestObject.test_toPairs()
+	local obj = {a=1, b=2, c=3}
+	this.lu.assertEquals(R.fromPairs(R.toPairs(obj)), obj)
+end
+
 return TestObject

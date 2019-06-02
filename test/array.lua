@@ -105,12 +105,14 @@ end
 
 function TestArray.test_drop()
 	local list = {'a','b','c'}
+	this.lu.assertEquals(R.drop(0, list), {'a', 'b', 'c'})
 	this.lu.assertEquals(R.drop(1, list), {'b', 'c'})
 	this.lu.assertEquals(R.drop(2, list), {'c'})
 	this.lu.assertEquals(R.drop(3)(list), {})
 	this.lu.assertEquals(R.drop(4, list), {})
 
 	local str = "lamda"
+	this.lu.assertEquals(R.drop(0, str), "lamda")
 	this.lu.assertEquals(R.drop(1, str), "amda")
 	this.lu.assertEquals(R.drop(3, str), "da")
 	this.lu.assertEquals(R.drop(5, str), "")
@@ -119,12 +121,14 @@ end
 
 function TestArray.test_dropLast()
 	local list = {'a','b','c'}
+	this.lu.assertEquals(R.dropLast(0, list), {'a', 'b', 'c'})
 	this.lu.assertEquals(R.dropLast(1, list), {'a', 'b'})
 	this.lu.assertEquals(R.dropLast(2, list), {'a'})
 	this.lu.assertEquals(R.dropLast(3)(list), {})
 	this.lu.assertEquals(R.dropLast(4, list), {})
 
 	local str = "lamda"
+	this.lu.assertEquals(R.dropLast(0, str), "lamda")
 	this.lu.assertEquals(R.dropLast(1, str), "lamd")
 	this.lu.assertEquals(R.dropLast(3, str), "la")
 	this.lu.assertEquals(R.dropLast(5, str), "")
@@ -543,6 +547,52 @@ function TestArray.test_splitWhen()
 	local isLower = function(c) return R.same(c, R.toLower(c)) end
 	this.lu.assertEquals(R.splitWhen(isLower, 'HELllo World'), {"HEL", "llo World"})
 end
+
+function TestArray.test_takeLast()
+	this.lu.assertEquals(R.takeLast(0, {'foo', 'bar', 'baz'}), {})
+	this.lu.assertEquals(R.takeLast(1, {'foo', 'bar', 'baz'}), {'baz'})
+	this.lu.assertEquals(R.takeLast(2, {'foo', 'bar', 'baz'}), {'bar', 'baz'})
+	this.lu.assertEquals(R.takeLast(3, {'foo', 'bar', 'baz'}), {'foo', 'bar', 'baz'})
+	this.lu.assertEquals(R.takeLast(4, {'foo', 'bar', 'baz'}), {'foo', 'bar', 'baz'})
+	this.lu.assertEquals(R.takeLast(3, 'lamda') , 'mda')
+	this.lu.assertEquals(R.takeLast(0, 'lamda') , '')
+end
+
+function TestArray.test_takeLastWhile()
+	local isNotOne = R.complement(R.equals(1))	
+	this.lu.assertEquals(R.takeLastWhile(isNotOne, {1, 2, 3, 4}), {2, 3, 4})
+	this.lu.assertEquals(R.takeLastWhile(R.T, {1, 2, 3, 4}), {1, 2, 3, 4})
+	this.lu.assertEquals(R.takeLastWhile(R.F, {1, 2, 3, 4}), {})
+
+	local isNotA = R.complement(R.equals('a'))	
+	this.lu.assertEquals(R.takeLastWhile(isNotA, "abcd"), "bcd")
+	this.lu.assertEquals(R.takeLastWhile(R.T, "abcd"), "abcd")
+	this.lu.assertEquals(R.takeLastWhile(R.F, "abcd"), "")
+end
+
+function TestArray.test_takeWhile()
+	local isNotFour = R.complement(R.equals(4))	
+	this.lu.assertEquals(R.takeWhile(isNotFour, {1, 2, 3, 4}), {1,2,3})
+	this.lu.assertEquals(R.takeWhile(R.T, {1, 2, 3, 4}), {1,2,3,4})
+	this.lu.assertEquals(R.takeWhile(R.F, {1, 2, 3, 4}), {})
+
+	local isNotD = R.complement(R.equals('d'))	
+	this.lu.assertEquals(R.takeWhile(isNotD, "abcd"), "abc")
+	this.lu.assertEquals(R.takeWhile(R.T, "abcd"), "abcd")
+	this.lu.assertEquals(R.takeWhile(R.F, "abcd"), "")
+end
+
+function TestArray.test_times()
+	this.lu.assertEquals(R.times(R.identity, 5), {1,2,3,4,5})
+	this.lu.assertEquals(R.times(R.identity, 0), {})
+end
+
+function TestArray.test_transpose()
+	this.lu.assertEquals(R.transpose({{1, 'a'}, {2, 'b'}, {3, 'c'}}), {{1, 2, 3}, {"a", "b", "c"}})
+	this.lu.assertEquals(R.transpose({{1, 2, 3}, {'a', 'b', 'c'}}), {{1, "a"}, {2, "b"}, {3, "c"}})
+	this.lu.assertEquals(R.transpose({{10, 11}, {20}, {}, {30, 31, 32}}), {{10, 20, 30}, {11, 31}, {32}})
+end
+
 
 
 return TestArray

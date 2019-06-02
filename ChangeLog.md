@@ -73,6 +73,9 @@
 * R.replace
 	* add replace count
 	* notice this method is not like the js version because lua doesn't include really regex expression.
+* R.tryCatch
+	* result is a function now.
+	* pass the arguments to tryer and catcher now.
 
 ## Bug Fixed
 * curry function
@@ -130,6 +133,12 @@
 * R.splitEvery	
 * R.splitWhen
 	* support string now.
+* R.takeLast & R.endsWith
+* R.takeLastWhile & R.takeWhile
+	* now support string.
+* R.times
+	* fix description
+* R.toPairs
 
 ## Removed
 * R.containsNoCurry
