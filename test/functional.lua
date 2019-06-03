@@ -375,7 +375,7 @@ end
 function TestFunc.test_useWith()
 	local f = math.pow
 	if not f then
-		f = function(a, b) return a ^ b
+		f = function(a, b) return a ^ b end
 	end
 	this.lu.assertEquals(R.useWith(math.pow, {R.identity, R.identity})(3, 4), 81)
 	this.lu.assertEquals(R.useWith(math.pow, {R.identity, R.identity})(3)(4), 81)
