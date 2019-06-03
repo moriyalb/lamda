@@ -36,6 +36,7 @@ R.NUMBER = "@@number"
 R.NIL = "@@nil"
 R.FUNCTION = "@@func"
 R.USERDATA = "@@user"
+R.THREAD = "@@thread"
 
 -- ===================================================
 -- ================ Private Functions ================
@@ -287,8 +288,12 @@ local _isFunction = function (val)
     return type(val) == "function"
 end
 
-local _isUserData = function(val)
-	error("<lamda_error> _isUserData:: not implement")
+local _isUserData = function (val)
+	return type(val) == "userdata"
+end
+
+local _isThread = function (val)
+	return type(val) == "thread"
 end
 
 local _get = function(idx, list)
@@ -1001,6 +1006,35 @@ R.isUserData = _curry1(_isUserData)
 R.isSafeUserData = _isUserData
 
 --[[
+	See if `val` is a thread
+	
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isThread = _curry1(_isThread)
+
+--[[
+	See if `val` is a user data
+	if val is nil, return false.
+
+	@func
+	@since 0.2.0
+	@category Util
+	@sig (* -> {*}) -> a -> Boolean
+	@param {Object} ctor A constructor
+	@param {*} val The value to test
+	@return {Boolean}
+	@see R.is		
+]]
+R.isSafeThread = _isThread
+
+--[[
 	See if `val` is a table
 	
 	@func
@@ -1489,11 +1523,83 @@ R.symmetricDifferenceWith = _curry3(function(pred, list1, list2)
 	return R.concat(R.differenceWith(pred, list1, list2), R.differenceWith(pred, list2, list1))
 end)
 
+local _check = function(test, loop)
+	return _isTable(test) and R.any(R.same(test), loop)
+end
+
+local _toString
+_toString = function(value, loop, isJson)
+	if _isTable(value) then
+		loop[#loop + 1] = value
+	end
+
+	if _isArray(value) then
+		local arr = {}
+		for _,v in ipairs(value) do			
+			if _check(v, loop) then 
+				arr[#arr + 1] = "\"<#loop ...>\""
+			else
+				arr[#arr + 1] = _toString(v, loop, isJson)
+			end
+		end
+		if isJson then
+			return "["..table.concat(arr, ",").."]"				
+		else
+			return "{"..table.concat(arr, ",").."}"	
+		end
+	elseif _isTable(value) then
+		local arr = {}
+		for k,v in pairs(value) do	
+			if _check(v, loop) then 
+				if isJson then
+					arr[#arr + 1] = "\""..k.."\""..":".."\"<#loop ...>\""
+				else
+					arr[#arr + 1] = "[".._toString(k, loop, isJson).."]=".."\"<#loop ...>\""
+				end
+			else
+				if isJson then
+					arr[#arr + 1] = "\""..k.."\""..":".._toString(v, loop, isJson)
+				else
+					arr[#arr + 1] = "[".._toString(k, loop, isJson).."]=".._toString(v, loop, isJson)
+				end
+			end					
+		end		
+		return "{"..table.concat(arr, ",").."}"		
+	elseif _isString(value) then
+		return "\""..value.."\""
+	elseif _isFunction(value) then
+		return "\"<#f "..tostring(value)..">\""
+	elseif _isUserData(value) then
+		return "\"<#u "..tostring(value)..">\""
+	elseif _isThread(value) then
+		return "\"<#t "..tostring(value)..">\""
+	elseif value == nil then
+		if isJson then
+			return "null"
+		else
+			return "nil"
+		end
+	elseif _isNan(value) then
+		if isJson then
+			return "NaN"
+		else
+			return "nan"
+		end
+	elseif _isInf(value) then
+		if isJson then
+			return "Infinity"
+		else
+			return "inf"
+		end
+	else
+		return tostring(value)
+	end
+end
+
 --[[
 	Convert the value to string recursively
 	
-	@func
-	
+	@func	
 	@category Util
 	@sig * -> String
 	@param *
@@ -1501,28 +1607,37 @@ end)
 	@example     
 		local t = R.toString() --> "nil"
 		local t = R.toString("") --> ""
-		local t = R.toString({a=1}) --> "{"a":1}"
+		local t = R.toString({a=1}) --> "{["a"]=1}"
 	@not curried
 		can not curry this function because nil will not be print
 ]]
 R.toString = function(value)
-	local result = ""
-	if _isArray(value) then
-		local arr = {}
-		for _,v in ipairs(value) do			
-			arr[#arr + 1] = R.toString(v)
-		end
-		return "{"..table.concat(arr, ",").."}"	
-	elseif _isTable(value) then
-		local arr = {}
-		for k,v in pairs(value) do			
-			arr[#arr + 1] = R.toString(k)..":"..R.toString(v)
-		end
-		return "{"..table.concat(arr, ",").."}"		
-	elseif _isString(value) then
-		return "\""..value.."\""
+	local loop = {}
+	return _toString(value, loop, false)
+end
+
+--[[
+	Convert the value to string(json format) recursively
+	
+	@func	
+	@since 0.3.0
+	@category Util
+	@sig * -> String
+	@param *
+	@return String
+	@example     
+		local t = R.toJson() --> "[null]"
+		local t = R.toJson("") --> 
+		local t = R.toJson({a=1}) --> "{"a":1}"
+	@not curried
+		can not curry this function because nil will not be print
+]]
+R.toJson = function(value)
+	local loop = {}
+	if not _isTable(value) then
+		return "[" .. _toString(value, loop, true) .."]"
 	else
-		return tostring(value)
+		return _toString(value, loop, true)
 	end
 end
 
