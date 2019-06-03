@@ -377,10 +377,10 @@ function TestFunc.test_useWith()
 	if not f then
 		f = function(a, b) return a ^ b end
 	end
-	this.lu.assertEquals(R.useWith(math.pow, {R.identity, R.identity})(3, 4), 81)
-	this.lu.assertEquals(R.useWith(math.pow, {R.identity, R.identity})(3)(4), 81)
-	this.lu.assertEquals(R.useWith(math.pow, {R.dec, R.inc})(3, 4), 32)
-	this.lu.assertEquals(R.useWith(math.pow, {R.dec, R.inc})(3)(4), 32)
+	this.lu.assertEquals(R.useWith(f, {R.identity, R.identity})(3, 4), 81)
+	this.lu.assertEquals(R.useWith(f, {R.identity, R.identity})(3)(4), 81)
+	this.lu.assertEquals(R.useWith(f, {R.dec, R.inc})(3, 4), 32)
+	this.lu.assertEquals(R.useWith(f, {R.dec, R.inc})(3)(4), 32)
 
 	local f = function(a, b, c, d, e, f) return a + b + c * d + e + f end
 	this.lu.assertEquals(R.useWith(f, {R.add(1), R.dec, R.minus(1), R.inc})(0,2,3,1,4,5), 7) --> 1 + 1 + -2 * 2 + 4 + 5
