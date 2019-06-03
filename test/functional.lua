@@ -357,4 +357,38 @@ function TestFunc.test_tryCatch()
 	this.lu.assertTrue(R.tryCatch(R.prop('x'), R.F, R.T)(1))
 end
 
+function TestFunc.test_unapply()
+	this.lu.assertEquals(R.unapply(R.sum)(1,2,3), 6)
+	this.lu.assertEquals(R.unapply(R.sum)(), 0)
+end
+
+function TestFunc.test_unless()
+	local safeInc = R.unless(R.isString, R.inc)
+	this.lu.assertEquals(safeInc('a'), 'a')
+	this.lu.assertEquals(safeInc(1), 2)
+end
+
+function TestFunc.test_until_()
+	this.lu.assertEquals(R.until_(R.gt(R.__, 100), R.multiply(2))(1), 128)
+end
+
+function TestFunc.test_useWith()
+	this.lu.assertEquals(R.useWith(math.pow, {R.identity, R.identity})(3, 4), 81)
+	this.lu.assertEquals(R.useWith(math.pow, {R.identity, R.identity})(3)(4), 81)
+	this.lu.assertEquals(R.useWith(math.pow, {R.dec, R.inc})(3, 4), 32)
+	this.lu.assertEquals(R.useWith(math.pow, {R.dec, R.inc})(3)(4), 32)
+
+	local f = function(a, b, c, d, e, f) return a + b + c * d + e + f end
+	this.lu.assertEquals(R.useWith(f, {R.add(1), R.dec, R.minus(1), R.inc})(0,2,3,1,4,5), 7) --> 1 + 1 + -2 * 2 + 4 + 5
+end
+
+function TestFunc.test_when()
+	local truncate = R.when(
+		R.compose(R.gt(R.__, 10), R.size),
+		R.pipe(R.take(10), R.append('...'))
+	)
+	this.lu.assertEquals(truncate('12345'), '12345')
+	this.lu.assertEquals(truncate('0123456789ABC'), '0123456789...')
+end
+
 return TestFunc

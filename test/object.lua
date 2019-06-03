@@ -165,6 +165,11 @@ function TestObject.test_pick()
 	this.lu.assertEquals(R.pick({'a', 'e', 'f'}, {a = 1, b = 2, c = 3, d = 4}), {a = 1})
 end
 
+function TestObject.test_pickAll()
+	this.lu.assertEquals(R.pickAll({'a', 'd'}, {a = 1, b = 2, c = 3, d = 4}), {a = 1, d = 4})
+	this.lu.assertEquals(R.pickAll({'a', 'e', 'f'}, {a = 1, b = 2, c = 3, d = 4}), {a = 1})
+end
+
 function TestObject.test_pickBy()
 	local isUpperCase = R.compose(R.safeEquals, R.unpack, R.mirrorBy(R.toUpper), R.second)		
 	this.lu.assertEquals(R.pickBy(isUpperCase, {a = 1, b = 2, A = 3, B = 4}), {A=3, B=4})
@@ -215,6 +220,38 @@ end
 function TestObject.test_toPairs()
 	local obj = {a=1, b=2, c=3}
 	this.lu.assertEquals(R.fromPairs(R.toPairs(obj)), obj)
+end
+
+function TestObject.test_project()
+	local abby = {name = 'Abby', age = 7, hair = 'blond', grade = 2}
+	local fred = {name = 'Fred', age = 12, hair = 'brown', grade = 7}
+	local kids = {abby, fred}
+	this.lu.assertEquals(R.project({'name', 'grade'}, kids), {{name = 'Abby', grade = 2}, {name = 'Fred', grade = 7}})
+end
+
+function TestObject.test_where()
+	-- pred :: Object -> Boolean
+	local pred = R.where({
+		a = R.equals('foo'),
+		b = R.complement(R.equals('bar')),
+		x = R.gt(R.__, 10),
+		y = R.lt(R.__, 20)
+	})
+
+	this.lu.assertTrue(pred({a = 'foo', b = 'xxx', x = 11, y = 19}))
+	this.lu.assertFalse(pred({a = 'xxx', b = 'xxx', x = 11, y = 19}))
+	this.lu.assertFalse(pred({a = 'foo', b = 'bar', x = 11, y = 19}))
+	this.lu.assertFalse(pred({a = 'foo', b = 'xxx', x = 10, y = 19}))
+	this.lu.assertFalse(pred({a = 'foo', b = 'xxx', x = 11, y = 20}))
+end
+
+function TestObject.test_whereEq()
+	local pred = R.whereEq({a = 1, b = 2})
+
+	this.lu.assertFalse(pred({a = 1}))
+	this.lu.assertTrue(pred({a = 1, b = 2}))
+	this.lu.assertTrue(pred({a = 1, b = 2, c = 3}))
+	this.lu.assertFalse(pred({a = 1, b = 1}))
 end
 
 return TestObject

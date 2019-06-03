@@ -4,7 +4,7 @@ A practical functional library for lua programmers.
 Ported from the JavaScript version https://github.com/ramda/ramda
 
 [![Build Status](https://travis-ci.org/moriyalb/lamda.svg?branch=master)](https://travis-ci.org/moriyalb/lamda)
-[![unstable](http://badges.github.io/stability-badges/dist/unstable.svg)](http://github.com/badges/stability-badges)
+[![unstable](http://badges.github.io/stability-badges/dist/stable.svg)](http://github.com/badges/stability-badges)
 
 [![Badge](https://img.shields.io/badge/link-996.icu-%23FF4D5B.svg?style=flat-square)](https://996.icu/#/en_US)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg?style=flat-square)](https://github.com/996icu/996.ICU/blob/master/LICENSE)

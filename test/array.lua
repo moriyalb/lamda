@@ -69,6 +69,9 @@ function TestArray.test_append()
 	local tbl_appended_curried = R.append('a')
 	this.lu.assertEquals(tbl_appended_curried({1,2}), {1,2,'a'})
 	this.lu.assertEquals(tbl_appended_curried({}), {'a'})
+
+	this.lu.assertEquals(R.append('d', 'abc'), 'abcd')
+	this.lu.assertEquals(R.append('', 'abc'), 'abc')
 end
 
 function TestArray.test_chain()
@@ -593,6 +596,71 @@ function TestArray.test_transpose()
 	this.lu.assertEquals(R.transpose({{10, 11}, {20}, {}, {30, 31, 32}}), {{10, 20, 30}, {11, 31}, {32}})
 end
 
+function TestArray.test_unfold()
+	local f = function(n)
+		if n > 50 then return false end
+		return {-n, n + 10}
+	end
+	this.lu.assertEquals(R.unfold(f, 10), {-10,-20,-30,-40,-50})
 
+	this.lu.assertEquals(R.unfold(R.F, 0), {})
+	this.lu.assertEquals(R.unfold(R.T, 0), {})
+end
+
+function TestArray.test_uniqBy()
+	this.lu.assertEquals(R.uniqBy(R.always(0), {1,-2,3,-4}), {1})
+	this.lu.assertEquals(R.uniqBy(math.abs, {-1, -5, 2, 10, 1, 2}), {-1, -5, 2, 10})
+end
+
+function TestArray.test_uniq()
+	this.lu.assertEquals(R.uniq({1, 1, 2, 1}), {1, 2})
+	this.lu.assertEquals(R.uniq({1, '1'}), {1, '1'})
+	this.lu.assertEquals(R.uniq({{42}, {42}}), {{42}})
+end
+
+function TestArray.test_uniqWith()
+	this.lu.assertEquals(R.uniqWith(R.equals, {1, -1, 1, 2, 1}), {1, -1, 2})
+end
+
+function TestArray.test_union()
+	this.lu.assertEquals(R.union({1, 2, 3}, {2, 3, 4}), {1, 2, 3, 4})
+	local l1 = {{a = 1}, {a = 2}}
+	local l2 = {{a = 1}, {a = 4}}
+	this.lu.assertEquals(R.unionWith(R.eqBy(R.prop('a')), l1, l2), {{a = 1}, {a = 2}, {a = 4}})
+end
+
+function TestArray.test_intersection()
+	this.lu.assertEquals(R.intersection({1,2,3,4}, {7,6,5,4,3}), {3, 4})
+	this.lu.assertEquals(R.intersection({}, {7,6,5,4,3}), {})
+	this.lu.assertEquals(R.intersection({1,2,3}, {3,2,1}), {1, 2, 3})
+end
+
+function TestArray.test_update()
+	this.lu.assertEquals(R.update(1, 11, {1,2,3}), {11,2,3})
+	this.lu.assertEquals(R.update(0, 11, {1,2,3}), {1,2,3})
+	this.lu.assertEquals(R.update(10, 11, {1,2,3}), {1,2,3})
+	this.lu.assertEquals(R.update(3, 11, {1,2,3}), {1,2,11})
+	this.lu.assertEquals(R.update(-1, 11, {1,2,3}), {1,2,11})
+end
+
+function TestArray.test_unset()
+	this.lu.assertEquals(R.unnest({1, {2}, {{3}}}), {1, 2, {3}})
+	this.lu.assertEquals(R.unnest({{1, 2}, {3, 4}, {5, 6}}), {1, 2, 3, 4, 5, 6})
+end
+
+function TestArray.test_without()
+	this.lu.assertEquals(R.without({1, 2}, {1, 2, 1, 3, 4}), {3,4})
+end
+
+function TestArray.test_xprod()
+	this.lu.assertEquals(R.xprod({1, 2}, {'a', 'b'}), {{1, 'a'}, {1, 'b'}, {2, 'a'}, {2, 'b'}})
+	this.lu.assertEquals(R.xprod({}, {}), {})
+end
+
+function TestArray.test_zip()
+	this.lu.assertEquals(R.zip({1,2,3}, {'a','b','c'}), {{1,'a'}, {2,'b'}, {3,'c'}})
+	this.lu.assertEquals(R.zipObj({'a','b','c'}, {1,2,3}), {a=1, b=2, c=3})
+	this.lu.assertEquals(R.zipWith(function(a, b) return {a+b, a-b} end, {1,2,3}, {4,5,6}), {{5,-3}, {7,-3}, {9,-3}})
+end
 
 return TestArray

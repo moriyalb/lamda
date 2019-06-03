@@ -2735,6 +2735,33 @@ R.tryCatch = function(tryer, catcher, finaller)
 end
 
 --[[
+	Takes a function `fn`, which takes a single array argument, and returns a
+	function which:	
+		- takes any number of positional arguments
+		- passes these arguments to `fn` as an array and
+		- returns the result.
+	
+	In other words, `R.unapply` derives a variadic function from a function which
+	takes an array. `R.unapply` is the inverse of [`R.apply`](#apply).
+	
+	@func
+	@category Functional
+	@sig ([*...] -> a) -> (*... -> a)
+	@param {Function} fn
+	@return {Function}
+	@see R.apply
+	@example
+		R.unapply(R.sum)(1, 2, 3) --> 6
+
+	@symb R.unapply(f)(a, b) = f([a, b])
+]]
+R.unapply = _curry1(function(fn)
+	return function (...)
+		return fn({...})
+	end
+end)
+
+--[[
 	Wraps a function of any arity (including nullary) in a function that accepts
 	exactly 1 parameter. Any extraneous parameters will not be passed to the
 	supplied function.
@@ -2761,6 +2788,128 @@ R.unary = _curry1(function(fn)
 	return R.nAry(1, fn)
 end)
 
+--[[
+	Tests the final argument by passing it to the given predicate function. If
+	the predicate is not satisfied, the function will return the result of
+	calling the `whenFalseFn` function with the same argument. If the predicate
+	is satisfied, the argument is returned as is.
+	
+	@func
+	@category Functional
+	@sig (a -> Boolean) -> (a -> a) -> a -> a
+	@param {Function} pred        A predicate function
+	@param {Function} whenFalseFn A function to invoke when the `pred` evaluates
+								to a falsy value.
+	@param {*} x An object to test with the `pred` function and
+								pass to `whenFalseFn` if necessary.
+	@return {*} Either `x` or the result of applying `x` to `whenFalseFn`.
+	@see R.ifElse, R.when
+	@example	
+		local safeInc = R.unless(R.isString, R.inc)
+		safeInc('a') -->'a'
+		safeInc(1) --> 2
+end
+]]
+R.unless = _curry3(function(pred, whenFalseFn, x)
+	return pred(x) and x or whenFalseFn(x)
+end)
+
+--[[
+	Takes a predicate, a transformation function, and an initial value,
+	and returns a value of the same type as the initial value.
+	It does so by applying the transformation until the predicate is satisfied,
+	at which point it returns the satisfactory value.
+	
+	@func
+	@category Functional
+	@sig (a -> Boolean) -> (a -> a) -> a -> a
+	@param {Function} pred A predicate function
+	@param {Function} fn The iterator function
+	@param {*} init Initial value
+	@return {*} Final value that satisfies predicate
+	@example	
+		R.until_(R.gt(R.__, 100), R.multiply(2))(1) --> 128
+]]
+R.until_ = _curry3(function(pred, fn, init)
+	local val = init
+	while not pred(val) do
+		val = fn(val)
+	end
+	return val
+end)
+
+--[[
+	Accepts a function `fn` and a list of transformer functions and returns a
+	new curried function. When the new function is invoked, it calls the
+	function `fn` with parameters consisting of the result of calling each
+	supplied handler on successive arguments to the new function.
+	
+	If more arguments are passed to the returned function than transformer
+	functions, those arguments are passed directly to `fn` as additional
+	parameters. If you expect additional arguments that don't need to be
+	transformed, although you can ignore them, it's best to pass an identity
+	function so that the new function reports the correct arity.
+	
+	@func
+	@category Functional
+	@sig (x1 -> x2 -> ... -> z) -> [(a -> x1), (b -> x2), ...] -> (a -> b -> ... -> z)
+	@param {Function} fn The function to wrap.
+	@param {Array} transformers A list of transformer functions
+	@return {Function} The wrapped function.
+	@see R.converge
+	@example	
+		R.useWith(math.pow, {R.identity, R.identity})(3, 4) --> 81
+		R.useWith(math.pow, {R.identity, R.identity})(3)(4) --> 81
+		R.useWith(math.pow, {R.dec, R.inc})(3, 4) --> 32
+		R.useWith(math.pow, {R.dec, R.inc})(3)(4) --> 32
+
+	@symb R.useWith(f, [g, h])(a, b, c) = f(g(a), h(b), c)
+]]
+R.useWith = _curry2(function(fn, transformers)
+	return R.curryN(#transformers, function (...)
+		local params = {...}
+		local args = {}
+		local idx = 1
+		while idx <= #transformers do
+			args[#args + 1] = transformers[idx](params[idx])
+			idx = idx + 1
+		end
+		while idx <= #params do
+			args[#args + 1] = params[idx]
+			idx = idx + 1
+		end
+		return fn(unpack(args))
+	end)
+end)
+
+--[[
+	Tests the final argument by passing it to the given predicate function. If
+	the predicate is satisfied, the function will return the result of calling
+	the `whenTrueFn` function with the same argument. If the predicate is not
+	satisfied, the argument is returned as is.
+	
+	@func
+	@category Functional
+	@sig (a -> Boolean) -> (a -> a) -> a -> a
+	@param {Function} pred       A predicate function
+	@param {Function} whenTrueFn A function to invoke when the `condition`
+								evaluates to a truthy value.
+	@param {*}        x          An object to test with the `pred` function and
+								pass to `whenTrueFn` if necessary.
+	@return {*} Either `x` or the result of applying `x` to `whenTrueFn`.
+	@see R.ifElse, R.unless
+	@example	
+		-- truncate :: String -> String
+		local truncate = R.when(
+		R.compose(R.gt(R.__, 10), R.size),
+		R.pipe(R.take(10), R.append('...'))
+	)
+	this.lu.assertEquals(truncate('12345'), '12345') --> '12345'
+	this.lu.assertEquals(truncate('0123456789ABC'), '0123456789...') --> '0123456789…'
+]]
+R.when = _curry3(function(pred, whenTrueFn, x)
+	return pred(x) and whenTrueFn(x) or x
+end)
 
 -- ================================================
 -- ================ Math Functions ================
@@ -3156,6 +3305,7 @@ end)
 	
 	@func
 	@category Array
+
 	@sig a -> [a] -> [a]
 	@param {*} el The element to add to the end of the new list.
 	@param {Array} list The list of elements to add a new item to.
@@ -3168,6 +3318,7 @@ end)
 		R.append({'tests'}, {'write', 'more'}) --> {'write', 'more', {'tests'}}
 ]]
 R.append = _curry2(function(el, list)
+	if _isString(list) then return list .. el end
 	return _concat(list, {el})
 end)
 --[[
@@ -4136,7 +4287,7 @@ end)
 	@param {*} a The accumulator value.
 	@param {Array} list The list to iterate over.
 	@return {*} The final, accumulated value.
-	@see R.reduce, R.reduced
+	@see R.reduce
 	@example	
 		local isOdd = R.o(R.equals(1), R.mod)
 		local xs = {1, 3, 5, 60, 777, 800}
@@ -4866,6 +5017,371 @@ R.transpose = _curry1(function(outerlist)
 	return result
 end)
 
+--[[
+	Builds a list from a seed value. Accepts an iterator function, which returns
+	either false to stop iteration or an array of length 2 containing the value
+	to add to the resulting list and the seed to be used in the next call to the
+	iterator function.
+	
+	The iterator function receives one argument: *(seed)*.
+	
+	@func
+	@category Array
+	@sig (a -> [b]) -> * -> [b]
+	@param {Function} fn The iterator function. receives one argument, `seed`, and returns
+		either false to quit iteration or an array of length two to proceed. The element
+		at index 0 of this array will be added to the resulting array, and the element
+		at index 1 will be passed to the next call to `fn`.
+	@param {*} seed The seed value.
+	@return {Array} The final list.
+	@example	
+		local f = function(n)
+			if n > 50 then return false end
+			return {-n, n + 10}
+		end
+		R.unfold(f, 10) --> {-10, -20, -30, -40, -50}
+		
+	@symb R.unfold(f, x) = [f(x)[0], f(f(x)[1])[0], f(f(f(x)[1])[1])[0], ...]
+]]
+R.unfold = _curry2(function(fn, seed)
+	local pair = fn(seed)
+	local result = {}
+	if not pair or not _isArray(pair) then return result end
+	while pair and #pair > 0 do
+		result[#result + 1] = pair[1]
+		pair = fn(pair[2])
+		if not pair or not _isArray(pair) then break end
+	end
+	return result
+end)
+
+--[[
+	Returns a new list containing only one copy of each element in the original
+	list, based upon the value returned by applying the supplied function to
+	each list element. Prefers the first item if the supplied function produces
+	the same value on two items. [`R.equals`](#equals) is used for comparison.
+	
+	@func
+	@category Array
+	@sig (a -> b) -> [a] -> [a]
+	@param {Function} fn A function used to produce a value to use during comparisons.
+	@param {Array} list The array to consider.
+	@return {Array} The list of unique items.
+	@example	
+		R.uniqBy(math.abs, {-1, -5, 2, 10, 1, 2}) --> {-1, -5, 2, 10}
+]]
+R.uniqBy = _curry2(function(fn, list)
+	local resultSet = {}
+	local result = {}
+	for k,v in ipairs(list) do
+		local appliedItem = fn(v)
+		if not _contains(appliedItem, resultSet) then
+			result[#result + 1] = v
+			resultSet[#resultSet + 1] = appliedItem
+		end
+	end
+	return result
+end)
+
+--[[
+	Returns a new list containing only one copy of each element in the original
+	list. [`R.equals`](#equals) is used to determine equality.
+	
+	@funn
+	@category Array
+	@sig [a] -> [a]
+	@param {Array} list The array to consider.
+	@return {Array} The list of unique items.
+	@example	
+		R.uniq({1, 1, 2, 1}) --> {1, 2}
+		R.uniq({1, '1'})     --> {1, '1'}
+		R.uniq({{42}, {42}}) --> {{42}}
+]]
+R.uniq = R.uniqBy(R.identity)
+
+--[[
+	Returns a new list containing only one copy of each element in the original
+	list, based upon the value returned by applying the supplied predicate to
+	two list elements. Prefers the first item if two items compare equal based
+	on the predicate.
+	
+	@func
+	@category Array
+	@sig (a, a -> Boolean) -> [a] -> [a]
+	@param {Function} pred A predicate used to test whether two items are equal.
+	@param {Array} list The array to consider.
+	@return {Array} The list of unique items.
+	@example
+	
+		local strEq = R.eqBy(String)
+		R.uniqWith(strEq)([1, '1', 2, 1]) --> [1, 2]
+		R.uniqWith(strEq)([{}, {}])       --> [{}]
+		R.uniqWith(strEq)([1, '1', 1])    --> [1]
+		R.uniqWith(strEq)(['1', 1, 1])    --> ['1']
+]]
+R.uniqWith = _curry2(function(pred, list)
+	local idx = 1
+	local len = #list
+	local result = {}
+	local item
+	while idx <= len do
+		item = list[idx]
+		if not _containsWith(pred, item, result) then
+			result[#result + 1] = item
+		end
+		idx = idx + 1
+	end
+	return result
+end)
+
+--[[
+	Combines two lists into a set (i.e. no duplicates) composed of the elements
+	of each list.
+	
+	@func
+	@category Array
+	@sig [*] -> [*] -> [*]
+	@param {Array} as The first list.
+	@param {Array} bs The second list.
+	@return {Array} The first and second lists concatenated, with
+			duplicates removed.
+	@example	
+		R.union({1, 2, 3}, {2, 3, 4}) --> {1, 2, 3, 4}
+]]
+R.union = _curry2(R.pipe(_concat, R.uniq))
+
+--[[
+	Combines two lists into a set (i.e. no duplicates) composed of the elements
+	of each list. Duplication is determined according to the value returned by
+	applying the supplied predicate to two list elements.
+	
+	@func
+	@category Array
+	@sig (a -> a -> Boolean) -> [*] -> [*] -> [*]
+	@param {Function} pred A predicate used to test whether two items are equal.
+	@param {Array} list1 The first list.
+	@param {Array} list2 The second list.
+	@return {Array} The first and second lists concatenated, with
+			duplicates removed.
+	@see R.union
+	@example	
+		local l1 = {{a = 1}, {a = 2}}
+		local l2 = {{a = 1}, {a = 4}}
+		R.unionWith(R.eqBy(R.prop('a')), l1, l2) --> {{a = 1}, {a = 2}, {a = 4}}
+]]
+R.unionWith = _curry3(function(pred, list1, list2)
+	return R.uniqWith(pred, _concat(list1, list2))
+end)
+
+--[[
+	Combines two lists into a set (i.e. no duplicates) composed of those
+	elements common to both lists.
+	
+	@func
+	@category Array
+	@sig [*] -> [*] -> [*]
+	@param {Array} list1 The first list.
+	@param {Array} list2 The second list.
+	@return {Array} The list of elements found in both `list1` and `list2`.
+	@see R.innerJoin
+	@example	
+		R.intersection({1,2,3,4}, {7,6,5,4,3}) --> {3, 4}
+]]
+R.intersection = _curry2(function(list1, list2)
+	local lookupList, filteredList
+	if #list1 > #list2 then
+		lookupList = list1
+		filteredList = list2
+	else
+		lookupList = list2
+		filteredList = list1
+	end
+	return R.uniq(_filter(R.contains(R.__, lookupList), filteredList))
+end)
+
+--[[
+	Returns a new copy of the array with the element at the provided index
+	replaced with the given value.
+	
+	@func
+	@category Array
+	@sig Number -> a -> [a] -> [a]
+	@param {Number} idx The index to update.
+	@param {*} x The value to exist at the given index of the returned array.
+	@param {Array|Arguments} list The source array-like object to be updated.
+	@return {Array} A copy of `list` with the value at index `idx` replaced with `x`.
+	@see R.adjust
+	@example	
+		R.update(2, 11, {0, 1, 2})     --> {0, 11, 2}
+		R.update(2)(11)({0, 1, 2})     --> {0, 11, 2}
+		 
+	@symb R.update(-1, a, [b, c]) = [b, a]
+	@symb R.update(0, a, [b, c]) = [a, c]
+	@symb R.update(1, a, [b, c]) = [b, a]
+]]
+R.update = _curry3(function (idx, x, list)
+	return R.adjust(R.always(x), idx, list)
+end)
+
+--[[
+	Shorthand for `R.chain(R.identity)`, which removes one level of nesting from
+	any [Chain](https:--github.com/fantasyland/fantasy-land#chain).
+	
+	@func
+	@category Array
+	@sig Chain c => c (c a) -> c a
+	@param {*} list
+	@return {*}
+	@see R.flatten, R.chain
+	@example	
+		R.unnest({1, {2}, {{3}}}) --> {1, 2, {3}}
+		R.unnest({{1, 2}, {3, 4}, {5, 6}}) --> {1, 2, 3, 4, 5, 6}
+]]
+R.unnest = R.chain(_identity)
+
+--[[
+	Returns a new list without values in the first argument.
+	[`R.equals`](#equals) is used to determine equality.
+		
+	@func
+	@category Array
+	@sig [a] -> [a] -> [a]
+	@param {Array} list1 The values to be removed from `list2`.
+	@param {Array} list2 The array to remove values from.
+	@return {Array} The new array without values in `list1`.
+	@see R.difference
+	@example	
+		R.without({1, 2}, {1, 2, 1, 3, 4}) --> {3, 4}
+]]
+R.without = _curry2(function (xs, list)
+	return R.reject(R.contains(R.__, xs), list)
+end)
+
+--[[
+	Creates a new list out of the two supplied by creating each possible pair
+	from the lists.
+	
+	@func
+	@category Array
+	@sig [a] -> [b] -> [ [a,b] ] 
+	@param {Array} as The first list.
+	@param {Array} bs The second list.
+	@return {Array} The list made by combining each possible pair from
+			`as` and `bs` into pairs (`[a, b]`).
+	@example	
+		R.xprod({1, 2}, {'a', 'b'}) --> {{1, 'a'}, {1, 'b'}, {2, 'a'}, {2, 'b'}}
+
+	@symb R.xprod([a, b], [c, d]) = {{a, c], [a, d], [b, c], [b, d] ]
+]]
+R.xprod = _curry2(function(a, b)
+	local idx = 1
+	local ilen = #a
+	local j
+	local jlen = #b
+	local result = {}
+	while idx <= ilen do
+		j = 1
+		while j <= jlen do
+			result[#result + 1] = {
+				a[idx],
+				b[j]
+			}
+			j = j + 1
+		end
+		idx = idx + 1
+	end
+	return result
+end)
+
+--[[
+	Creates a new list out of the two supplied by pairing up equally-positioned
+	items from both lists. The returned list is truncated to the length of the
+	shorter of the two input lists.
+	Note: `zip` is equivalent to `zipWith(function(a, b) return {a, b} end)`.
+	
+	@func
+	@category Array
+	@sig [a] -> [b] -> [ [a,b] ]
+	@param {Array} list1 The first array to consider.
+	@param {Array} list2 The second array to consider.
+	@return {Array} The list made by pairing up same-indexed elements of `list1` and `list2`.
+	@example	
+		R.zip({1, 2, 3}, {'a', 'b', 'c'}) --> {{1, 'a'}, {2, 'b'}, {3, 'c'}}
+
+	@symb R.zip([a, b, c], [d, e, f]) = [[a, d], [b, e], [c, f] ]
+]]
+R.zip = _curry2(function(a, b)
+	local rv = {}
+	local idx = 1
+	local len = math.min(#a, #b)
+	while idx <= len do
+		rv[idx] = {
+			a[idx],
+			b[idx]
+		}
+		idx = idx + 1
+	end
+	return rv
+end)
+
+--[[
+	Creates a new object out of a list of keys and a list of values.
+	Key/value pairing is truncated to the length of the shorter of the two lists.
+	Note: `zipObj` is equivalent to `pipe(zipWith(pair), fromPairs)`.
+	
+	@func
+	@category Array
+	@sig [String] -> [*] -> {String: *}
+	@param {Array} keys The array that will be properties on the output object.
+	@param {Array} values The list of values on the output object.
+	@return {Object} The object made by pairing up same-indexed elements of `keys` and `values`.
+	@example	
+		R.zipObj({'a', 'b', 'c'}, {1, 2, 3}) --> {a = 1, b = 2, c = 3}
+]]
+R.zipObj = _curry2(function(keys, values)
+	local idx = 1
+	local len = math.min(#keys, #values)
+	local out = {}
+	while idx <= len do
+		out[keys[idx]] = values[idx]
+		idx = idx + 1
+	end
+	return out
+end)
+
+--[[
+	Creates a new list out of the two supplied by applying the function to each
+	equally-positioned pair in the lists. The returned list is truncated to the
+	length of the shorter of the two input lists.
+	
+	@func
+	@category Array
+	@sig (a,b -> c) -> [a] -> [b] -> [c]
+	@param {Function} fn The function used to combine the two elements into one value.
+	@param {Array} list1 The first array to consider.
+	@param {Array} list2 The second array to consider.
+	@return {Array} The list made by combining same-indexed elements of `list1` and `list2`
+			using `fn`.
+	@example	
+		local f = function(x, y) 
+			-- ...
+		end	
+		R.zipWith(f, {1, 2, 3}, {'a', 'b', 'c'})
+		--> {f(1, 'a'), f(2, 'b'), f(3, 'c')}
+		
+	@symb R.zipWith(fn, [a, b, c], [d, e, f]) = [fn(a, d), fn(b, e), fn(c, f)]
+]]
+R.zipWith = _curry3(function(fn, a, b)
+	local rv = {}
+	local idx = 1
+	local len = math.min(#a, #b)
+	while idx <= len do
+		rv[idx] = fn(a[idx], b[idx])
+		idx = idx + 1
+	end
+	return rv
+end)
+
 -- ==================================================
 -- ================ Object Functions ================
 -- ==================================================
@@ -5573,6 +6089,34 @@ R.pick = _curry2(function(names, obj)
 end)
 
 --[[
+	Similar to `pick` except that this one includes a `key: undefined` pair for
+	properties that don't exist.
+	
+	@func
+	@since v0.2.0
+	@category Object
+	@sig [k] -> {k: v} -> {k: v}
+	@param {Array} names an array of String property names to copy onto a new object
+	@param {Object} obj The object to copy from
+	@return {Object} A new object with only properties from `names` on it.
+	@see R.pick
+	@example	
+		R.pickAll({'a', 'd'}, {a = 1, b = 2, c = 3, d = 4}) --> {a = 1, d = 4}
+		R.pickAll({'a', 'e', 'f'}, {a = 1, b = 2, c = 3, d = 4}) --> {a = 1}
+]]
+R.pickAll = _curry2(function(names, obj)
+	local result = {}
+	local idx = 1
+	local len = #names
+	while idx <= len do
+		local name = names[idx]
+		result[name] = obj[name]
+		idx = idx + 1
+	end
+	return result
+end)
+
+--[[
 	Returns a partial copy of an object containing only the keys that satisfy
 	the supplied predicate.
 	
@@ -5622,6 +6166,28 @@ end)
 R.pluck = _curry2(function(p, list)
 	return _mapObject(R.prop(p), list)
 end)
+
+--[[
+	Reasonable analog to SQL `select` statement.
+	
+	@func
+	@category Object
+	@category Util
+	@sig [k] -> [{k: v}] -> [{k: v}]
+	@param {Array} props The property names to project
+	@param {Array} objs The objects to query
+	@return {Array} An array of objects with just the `props` properties.
+	@example	
+		local abby = {name = 'Abby', age = 7, hair = 'blond', grade = 2}
+		local fred = {name = 'Fred', age = 12, hair = 'brown', grade = 7}
+		local kids = {abby, fred}
+		R.project({'name', 'grade'}, kids) --> {{name = 'Abby', grade = 2}, {name = 'Fred', grade = 7}}
+]]
+-- passing `identity` gives correct arity
+R.project = R.useWith(R.map, {
+	R.pickAll,
+	R.identity
+})
 
 --[[
 	Returns a function that when supplied an object returns the indicated
@@ -5835,6 +6401,75 @@ R.values = _curry1(function(obj)
 		table.insert(values, p)
 	end
 	return values
+end)
+
+--[[
+	Takes a spec object and a test object returns true if the test satisfies
+	the spec. Each of the spec's keys must be a predicate function.
+	Each predicate is applied to the value of the corresponding property of the
+	test object. `where` returns true if all the predicates return true, false
+	otherwise.
+	
+	`where` is well suited to declaratively expressing constraints for other
+	functions such as [`filter`](#filter) and [`find`](#find).
+	
+	@func
+	@category Object
+	@sig {String: (* -> Boolean)} -> {String: *} -> Boolean
+	@param {Object} spec
+	@param {Object} testObj
+	@return {Boolean}
+	@example	
+		-- pred :: Object -> Boolean
+		local pred = R.where({
+			a = R.equals('foo'),
+			b = R.complement(R.equals('bar')),
+			x = R.gt(R.__, 10),
+			y = R.lt(R.__, 20)
+		})
+	
+		pred({a = 'foo', b = 'xxx', x = 11, y = 19}) --> true
+		pred({a = 'xxx', b = 'xxx', x = 11, y = 19}) --> false
+		pred({a = 'foo', b = 'bar', x = 11, y = 19}) --> false
+		pred({a = 'foo', b = 'xxx', x = 10, y = 19}) --> false
+		pred({a = 'foo', b = 'xxx', x = 11, y = 20}) --> false
+]]
+R.where = _curry2(function(spec, testObj)
+	for prop,v in pairs(spec) do
+		if R.isNil(testObj[prop]) or not v(testObj[prop]) then
+			return false
+		end
+	end
+	return true
+end)
+
+--[[
+	Takes a spec object and a test object returns true if the test satisfies
+	the spec, false otherwise. An object satisfies the spec if, for each of the
+	spec's keys, accessing that property of the object gives the same
+	value (in [`R.equals`](#equals) terms) as accessing that property of the
+	spec.
+	
+	`whereEq` is a specialization of [`where`](#where).
+	
+	@func
+	@category Object
+	@sig {String: *} -> {String: *} -> Boolean
+	@param {Object} spec
+	@param {Object} testObj
+	@return {Boolean}
+	@see R.where
+	@example
+		-- pred :: Object -> Boolean
+		local pred = R.whereEq({a = 1, b = 2})
+
+		pred({a = 1})              --> false
+		pred({a = 1, b = 2})        --> true
+		pred({a = 1, b = 2, c = 3})  --> true
+		pred({a = 1, b = 1})        --> false
+]]
+R.whereEq = _curry2(function(spec, testObj)
+	return R.where(_mapObject(R.unary(R.equals), spec), testObj)
 end)
 
 -- ==================================================
@@ -6151,908 +6786,15 @@ R.shuffle = function(list)
 	return nl
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---[[
-     Takes a function `fn`, which takes a single array argument, and returns a
-     function which:
-     
-       - takes any number of positional arguments
-       - passes these arguments to `fn` as an array and
-       - returns the result.
-     
-     In other words, `R.unapply` derives a variadic function from a function which
-     takes an array. `R.unapply` is the inverse of [`R.apply`](#apply).
-     
-     @func
-
-     @since v0.8.0
-     @category Function
-     @sig ([*...] -> a) -> (*... -> a)
-     @param {Function} fn
-     @return {Function}
-     @see R.apply
-     @example
-     
-          R.unapply(JSON.stringify)(1, 2, 3) --> '[1,2,3]'
-     @symb R.unapply(f)(a, b) = f([a, b])
-]]
-R.unapply = _curry1(function(fn)
-	return function (...)
-		return fn({...})
-	end
-end)
-
-
-
---[[
-     Builds a list from a seed value. Accepts an iterator function, which returns
-     either false to stop iteration or an array of length 2 containing the value
-     to add to the resulting list and the seed to be used in the next call to the
-     iterator function.
-     
-     The iterator function receives one argument: *(seed)*.
-     
-     @func
-
-     @since v0.10.0
-     @category Array
-     @sig (a -> [b]) -> * -> [b]
-     @param {Function} fn The iterator function. receives one argument, `seed`, and returns
-            either false to quit iteration or an array of length two to proceed. The element
-            at index 0 of this array will be added to the resulting array, and the element
-            at index 1 will be passed to the next call to `fn`.
-     @param {*} seed The seed value.
-     @return {Array} The final list.
-     @example
-     
-          local f = n => n > 50 ? false : [-n, n + 10]
-          R.unfold(f, 10) --> [-10, -20, -30, -40, -50]
-     @symb R.unfold(f, x) = [f(x)[0], f(f(x)[1])[0], f(f(f(x)[1])[1])[0], ...]
-]]
-R.unfold = _curry2(function(fn, seed)
-	local pair = fn(seed)
-	local result = {}
-	while pair and #pair > 0 do
-		result[#result + 1] = pair[1]
-		pair = fn(pair[2])
-	end
-	return result
-end)
-
---[[
-     Returns a new list containing only one copy of each element in the original
-     list, based upon the value returned by applying the supplied function to
-     each list element. Prefers the first item if the supplied function produces
-     the same value on two items. [`R.equals`](#equals) is used for comparison.
-     
-     @func
-
-     @since v0.16.0
-     @category Array
-     @sig (a -> b) -> [a] -> [a]
-     @param {Function} fn A function used to produce a value to use during comparisons.
-     @param {Array} list The array to consider.
-     @return {Array} The list of unique items.
-     @example
-     
-          R.uniqBy(math.abs, [-1, -5, 2, 10, 1, 2]) --> [-1, -5, 2, 10]
-]]
-R.uniqBy = _curry2(function(fn, list)
-	local resultSet = {}
-	local result = {}
-	for k,v in ipairs(list) do
-		local appliedItem = fn(v)
-		if not _contains(appliedItem, resultSet) then
-			result[#result + 1] = v
-			resultSet[#resultSet + 1] = appliedItem
-		end
-	end
-	return result
-end)
-
---[[
-     Returns a new list containing only one copy of each element in the original
-     list. [`R.equals`](#equals) is used to determine equality.
-     
-     @func
-
-     
-     @category Array
-     @sig [a] -> [a]
-     @param {Array} list The array to consider.
-     @return {Array} The list of unique items.
-     @example
-     
-          R.uniq([1, 1, 2, 1]) --> [1, 2]
-          R.uniq([1, '1'])     --> [1, '1']
-          R.uniq({{42], [42] ]) --> {{42] ]
-]]
-R.uniq = R.uniqBy(R.identity)
-
---[[
-     Returns a new list containing only one copy of each element in the original
-     list, based upon the value returned by applying the supplied predicate to
-     two list elements. Prefers the first item if two items compare equal based
-     on the predicate.
-     
-     @func
-
-     @since v0.2.0
-     @category Array
-     @sig (a, a -> Boolean) -> [a] -> [a]
-     @param {Function} pred A predicate used to test whether two items are equal.
-     @param {Array} list The array to consider.
-     @return {Array} The list of unique items.
-     @example
-     
-          local strEq = R.eqBy(String)
-          R.uniqWith(strEq)([1, '1', 2, 1]) --> [1, 2]
-          R.uniqWith(strEq)([{}, {}])       --> [{}]
-          R.uniqWith(strEq)([1, '1', 1])    --> [1]
-          R.uniqWith(strEq)(['1', 1, 1])    --> ['1']
-]]
-R.uniqWith = _curry2(function(pred, list)
-	local idx = 1
-	local len = #list
-	local result = {}
-	local item
-	while idx <= len do
-		item = list[idx]
-		if not _containsWith(pred, item, result) then
-			result[#result + 1] = item
-		end
-		idx = idx + 1
-	end
-	return result
-end)
-
---[[
-     Combines two lists into a set (i.e. no duplicates) composed of the elements
-     of each list.
-     
-     @func
-
-     
-     @category Util
-     @sig [*] -> [*] -> [*]
-     @param {Array} as The first list.
-     @param {Array} bs The second list.
-     @return {Array} The first and second lists concatenated, with
-             duplicates removed.
-     @example
-     
-          R.union([1, 2, 3], [2, 3, 4]) --> [1, 2, 3, 4]
-]]
-R.union = _curry2(R.pipe(_concat, R.uniq))
-
---[[
-     Combines two lists into a set (i.e. no duplicates) composed of the elements
-     of each list. Duplication is determined according to the value returned by
-     applying the supplied predicate to two list elements.
-     
-     @func
-
-     
-     @category Util
-     @sig (a -> a -> Boolean) -> [*] -> [*] -> [*]
-     @param {Function} pred A predicate used to test whether two items are equal.
-     @param {Array} list1 The first list.
-     @param {Array} list2 The second list.
-     @return {Array} The first and second lists concatenated, with
-             duplicates removed.
-     @see R.union
-     @example
-     
-          local l1 = [{a: 1}, {a: 2}]
-          local l2 = [{a: 1}, {a: 4}]
-          R.unionWith(R.eqBy(R.prop('a')), l1, l2) --> [{a: 1}, {a: 2}, {a: 4}]
-]]
-R.unionWith = _curry3(function(pred, list1, list2)
-	return R.uniqWith(pred, _concat(list1, list2))
-end)
-
---[[
-     Combines two lists into a set (i.e. no duplicates) composed of those
-     elements common to both lists.
-     
-     @func
-
-     
-     @category Util
-     @sig [*] -> [*] -> [*]
-     @param {Array} list1 The first list.
-     @param {Array} list2 The second list.
-     @return {Array} The list of elements found in both `list1` and `list2`.
-     @see R.innerJoin
-     @example
-     
-          R.intersection([1,2,3,4], [7,6,5,4,3]) --> [4, 3]
-]]
-R.intersection = _curry2(function(list1, list2)
-	local lookupList, filteredList
-	if #list1 > #list2 then
-		lookupList = list1
-		filteredList = list2
-	else
-		lookupList = list2
-		filteredList = list1
-	end
-	return R.uniq(_filter(R.contains(R.__, lookupList), filteredList))
-end)
-
---[[
-     Tests the final argument by passing it to the given predicate function. If
-     the predicate is not satisfied, the function will return the result of
-     calling the `whenFalseFn` function with the same argument. If the predicate
-     is satisfied, the argument is returned as is.
-     
-     @func
-
-     @since v0.18.0
-     @category Logic
-     @sig (a -> Boolean) -> (a -> a) -> a -> a
-     @param {Function} pred        A predicate function
-     @param {Function} whenFalseFn A function to invoke when the `pred` evaluates
-                                   to a falsy value.
-     @param {*}        x           An object to test with the `pred` function and
-                                   pass to `whenFalseFn` if necessary.
-     @return {*} Either `x` or the result of applying `x` to `whenFalseFn`.
-     @see R.ifElse, R.when
-     @example
-     
-          let safeInc = R.unless(R.isNil, R.inc)
-          safeInc(null) --> null
-          safeInc(1) --> 2
-]]
-R.unless = _curry3(function(pred, whenFalseFn, x)
-	return pred(x) and x or whenFalseFn(x)
-end)
-
---[[
-     Takes a predicate, a transformation function, and an initial value,
-     and returns a value of the same type as the initial value.
-     It does so by applying the transformation until the predicate is satisfied,
-     at which point it returns the satisfactory value.
-     
-     @func
-
-     @since v0.20.0
-     @category Logic
-     @sig (a -> Boolean) -> (a -> a) -> a -> a
-     @param {Function} pred A predicate function
-     @param {Function} fn The iterator function
-     @param {*} init Initial value
-     @return {*} Final value that satisfies predicate
-     @example
-     
-          R.until(R.gt(R.__, 100), R.multiply(2))(1) --> 128
-]]
-R.until_ = _curry3(function(pred, fn, init)
-	local val = init
-	while not pred(val) do
-		val = fn(val)
-	end
-	return val
-end)
-
-
---[[
-	Returns a new copy of the array with the element at the provided index
-	replaced with the given value.
-	
-	@func
-
-	@since v0.14.0
-	@category Array
-	@sig Number -> a -> [a] -> [a]
-	@param {Number} idx The index to update.
-	@param {*} x The value to exist at the given index of the returned array.
-	@param {Array|Arguments} list The source array-like object to be updated.
-	@return {Array} A copy of `list` with the value at index `idx` replaced with `x`.
-	@see R.adjust
-	@example
-	
-	     R.update(1, 11, [0, 1, 2])     --> [0, 11, 2]
-	     R.update(1)(11)([0, 1, 2])     --> [0, 11, 2]
-	@symb R.update(-1, a, [b, c]) = [b, a]
-	@symb R.update(0, a, [b, c]) = [a, c]
-	@symb R.update(1, a, [b, c]) = [b, a]
-]]
-R.update = _curry3(function (idx, x, list)
-	return R.adjust(R.always(x), idx, list)
-end)
-
---[[
-     Shorthand for `R.chain(R.identity)`, which removes one level of nesting from
-     any [Chain](https:--github.com/fantasyland/fantasy-land#chain).
-     
-     @func
-
-     @since v0.3.0
-     @category Array
-     @sig Chain c => c (c a) -> c a
-     @param {*} list
-     @return {*}
-     @see R.flatten, R.chain
-     @example
-     
-          R.unnest([1, [2], {{3] ] ]) --> [1, 2, [3] ]
-          R.unnest({{1, 2], [3, 4], [5, 6] ]) --> [1, 2, 3, 4, 5, 6]
-]]
-R.unnest = R.chain(_identity)
-
-
---[[
-     Accepts a function `fn` and a list of transformer functions and returns a
-     new curried function. When the new function is invoked, it calls the
-     function `fn` with parameters consisting of the result of calling each
-     supplied handler on successive arguments to the new function.
-     
-     If more arguments are passed to the returned function than transformer
-     functions, those arguments are passed directly to `fn` as additional
-     parameters. If you expect additional arguments that don't need to be
-     transformed, although you can ignore them, it's best to pass an identity
-     function so that the new function reports the correct arity.
-     
-     @func
-
-     
-     @category Function
-     @sig (x1 -> x2 -> ... -> z) -> [(a -> x1), (b -> x2), ...] -> (a -> b -> ... -> z)
-     @param {Function} fn The function to wrap.
-     @param {Array} transformers A list of transformer functions
-     @return {Function} The wrapped function.
-     @see R.converge
-     @example
-     
-          R.useWith(Math.pow, [R.identity, R.identity])(3, 4) --> 81
-          R.useWith(Math.pow, [R.identity, R.identity])(3)(4) --> 81
-          R.useWith(Math.pow, [R.dec, R.inc])(3, 4) --> 32
-          R.useWith(Math.pow, [R.dec, R.inc])(3)(4) --> 32
-     @symb R.useWith(f, [g, h])(a, b) = f(g(a), h(b))
-	 * @bug now ,curryN can now work now.
-]]
-R.useWith = _curry2(function(fn, transformers)
-	return R.curryN(#transformers, function (...)
-		local params = {...}
-		local args = {}
-		local idx = 1
-		while idx <= #transformers do
-			args[#args + 1] = transformers[idx](params[idx])
-			idx = idx + 1
-		end
-		return fn(unpack(args))
-	end)
-end)
-
-
---[[
-     Reasonable analog to SQL `select` statement.
-     
-     @func
-
-     
-     @category Object
-     @category Util
-     @sig [k] -> [{k: v}] -> [{k: v}]
-     @param {Array} props The property names to project
-     @param {Array} objs The objects to query
-     @return {Array} An array of objects with just the `props` properties.
-     @example
-     
-          local abby = {name = 'Abby', age = 7, hair = 'blond', grade: 2}
-          local fred = {name = 'Fred', age = 12, hair = 'brown', grade: 7}
-          local kids = [abby, fred]
-          R.project(['name', 'grade'], kids) --> [{name = 'Abby', grade: 2}, {name = 'Fred', grade: 7}]
-]]
--- passing `identity` gives correct arity
-R.project = R.useWith(R.map, {
-	R.pickAll,
-	R.identity
-})
-
-
---[[
-     Returns a "view" of the given data structure, determined by the given lens.
-     The lens's focus determines which portion of the data structure is visible.
-     
-     @func
-
-     @since v0.16.0
-     @category Object
-     @typedefn Lens s a = Functor f => (a -> f a) -> s -> f s
-     @sig Lens s a -> s -> a
-     @param {Lens} lens
-     @param {*} x
-     @return {*}
-     @see R.prop, R.lensIndex, R.lensProp
-     @example
-     
-          local xLens = R.lensProp('x')
-     
-          R.view(xLens, {x: 1, y: 2})  --> 1
-          R.view(xLens, {x: 4, y: 2})  --> 4
-]]
-    ---- `Const` is a functor that effectively ignores the function given to `map`.
-    ---- Using `Const` effectively ignores the setter function of the `lens`,
-    ---- leaving the value returned by the getter function unmodified.
-R.view = (function ()
-	-- `Const` is a functor that effectively ignores the function given to `map`.
-	local Const = function (x)
-		return {
-			value = x		
-		}
-	end
-	return _curry2(function(lens, x)
-		-- Using `Const` effectively ignores the setter function of the `lens`,
-		-- leaving the value returned by the getter function unmodified.
-		return lens(Const)(x).value
-	end)
-end)()
-
---[[
-     Tests the final argument by passing it to the given predicate function. If
-     the predicate is satisfied, the function will return the result of calling
-     the `whenTrueFn` function with the same argument. If the predicate is not
-     satisfied, the argument is returned as is.
-     
-     @func
-
-     @since v0.18.0
-     @category Logic
-     @sig (a -> Boolean) -> (a -> a) -> a -> a
-     @param {Function} pred       A predicate function
-     @param {Function} whenTrueFn A function to invoke when the `condition`
-                                  evaluates to a truthy value.
-     @param {*}        x          An object to test with the `pred` function and
-                                  pass to `whenTrueFn` if necessary.
-     @return {*} Either `x` or the result of applying `x` to `whenTrueFn`.
-     @see R.ifElse, R.unless
-     @example
-     
-          -- truncate :: String -> String
-          local truncate = R.when(
-            R.propSatisfies(R.gt(R.__, 10), 'length'),
-            R.pipe(R.take(10), R.append('…'), R.join(''))
-          )
-          truncate('12345')         --> '12345'
-          truncate('0123456789ABC') --> '0123456789…'
-]]
-R.when = _curry3(function(pred, whenTrueFn, x)
-	return pred(x) and whenTrueFn(x) or x
-end)
-
---[[
-     Takes a spec object and a test object returns true if the test satisfies
-     the spec. Each of the spec's keys must be a predicate function.
-     Each predicate is applied to the value of the corresponding property of the
-     test object. `where` returns true if all the predicates return true, false
-     otherwise.
-     
-     `where` is well suited to declaratively expressing constraints for other
-     functions such as [`filter`](#filter) and [`find`](#find).
-     
-     @func
-
-     @since v0.1.1
-     @category Object
-     @sig {String: (* -> Boolean)} -> {String: *} -> Boolean
-     @param {Object} spec
-     @param {Object} testObj
-     @return {Boolean}
-     @example
-     
-          -- pred :: Object -> Boolean
-          local pred = R.where({
-            a: R.equals('foo'),
-            b: R.complement(R.equals('bar')),
-            x: R.gt(R.__, 10),
-            y: R.lt(R.__, 20)
-          })
-     
-          pred({a = 'foo', b = 'xxx', x: 11, y: 19}) --> true
-          pred({a = 'xxx', b = 'xxx', x: 11, y: 19}) --> false
-          pred({a = 'foo', b = 'bar', x: 11, y: 19}) --> false
-          pred({a = 'foo', b = 'xxx', x: 10, y: 19}) --> false
-          pred({a = 'foo', b = 'xxx', x: 11, y: 20}) --> false
-]]
-R.where = _curry2(function(spec, testObj)
-	for prop,v in pairs(spec) do
-		if not v(testObj[prop]) then
-			return false
-		end
-	end
-	return true
-end)
-
---[[
-     Takes a spec object and a test object returns true if the test satisfies
-     the spec, false otherwise. An object satisfies the spec if, for each of the
-     spec's keys, accessing that property of the object gives the same
-     value (in [`R.equals`](#equals) terms) as accessing that property of the
-     spec.
-     
-     `whereEq` is a specialization of [`where`](#where).
-     
-     @func
-
-     @since v0.14.0
-     @category Object
-     @sig {String: *} -> {String: *} -> Boolean
-     @param {Object} spec
-     @param {Object} testObj
-     @return {Boolean}
-     @see R.where
-     @example
-     
-          -- pred :: Object -> Boolean
-          local pred = R.whereEq({a: 1, b: 2})
-     
-          pred({a: 1})              --> false
-          pred({a: 1, b: 2})        --> true
-          pred({a: 1, b: 2, c: 3})  --> true
-          pred({a: 1, b: 1})        --> false
-]]
-R.whereEq = _curry2(function(spec, testObj)
-	return R.where(_mapObject(R.equals, spec), testObj)
-end)
-
---[[
-     Returns a new list without values in the first argument.
-     [`R.equals`](#equals) is used to determine equality.
-     
-     Acts as a transducer if a transformer is given in list position.
-     
-     @func
-
-     @since v0.19.0
-     @category Array
-     @sig [a] -> [a] -> [a]
-     @param {Array} list1 The values to be removed from `list2`.
-     @param {Array} list2 The array to remove values from.
-     @return {Array} The new array without values in `list1`.
-     , R.difference
-     @example
-     
-          R.without([1, 2], [1, 2, 1, 3, 4]) --> [3, 4]
-]]
-R.without = _curry2(function (xs, list)
-	return R.reject(R.contains(R.__, xs), list)
-end)
-
---[[
-     Creates a new list out of the two supplied by creating each possible pair
-     from the lists.
-     
-     @func
-
-     
-     @category Array
-     @sig [a] -> [b] -> [ [a,b] ] 
-     @param {Array} as The first list.
-     @param {Array} bs The second list.
-     @return {Array} The list made by combining each possible pair from
-             `as` and `bs` into pairs (`[a, b]`).
-     @example
-     
-          R.xprod([1, 2], ['a', 'b']) --> {{1, 'a'], [1, 'b'], [2, 'a'], [2, 'b'] ]
-     @symb R.xprod([a, b], [c, d]) = {{a, c], [a, d], [b, c], [b, d] ]
-]]
-    ---- = xprodWith(prepend) (takes about 3 times as long...)
-R.xprod = _curry2(function(a, b)
-	-- = xprodWith(prepend) (takes about 3 times as long...)
-	local idx = 1
-	local ilen = #a
-	local j
-	local jlen = #b
-	local result = {}
-	while idx <= ilen do
-		j = 1
-		while j <= jlen do
-			result[#result + 1] = {
-				a[idx],
-				b[j]
-			}
-			j = j + 1
-		end
-		idx = idx + 1
-	end
-	return result
-end)
-
---[[
-     Creates a new list out of the two supplied by pairing up equally-positioned
-     items from both lists. The returned list is truncated to the length of the
-     shorter of the two input lists.
-     Note: `zip` is equivalent to `zipWith(function(a, b) { return [a, b] })`.
-     
-     @func
-
-     
-     @category Array
-     @sig [a] -> [b] -> [ [a,b] ]
-     @param {Array} list1 The first array to consider.
-     @param {Array} list2 The second array to consider.
-     @return {Array} The list made by pairing up same-indexed elements of `list1` and `list2`.
-     @example
-     
-          R.zip([1, 2, 3], ['a', 'b', 'c']) --> {{1, 'a'], [2, 'b'], [3, 'c'] ]
-     @symb R.zip([a, b, c], [d, e, f]) = {{a, d], [b, e], [c, f] ]
-]]
-R.zip = _curry2(function(a, b)
-	local rv = {}
-	local idx = 1
-	local len = math.min(#a, #b)
-	while idx <= len do
-		rv[idx] = {
-			a[idx],
-			b[idx]
-		}
-		idx = idx + 1
-	end
-	return rv
-end)
-
---[[
-     Creates a new object out of a list of keys and a list of values.
-     Key/value pairing is truncated to the length of the shorter of the two lists.
-     Note: `zipObj` is equivalent to `pipe(zipWith(pair), fromPairs)`.
-     
-     @func
-
-     @since v0.3.0
-     @category Array
-     @sig [String] -> [*] -> {String: *}
-     @param {Array} keys The array that will be properties on the output object.
-     @param {Array} values The list of values on the output object.
-     @return {Object} The object made by pairing up same-indexed elements of `keys` and `values`.
-     @example
-     
-          R.zipObj(['a', 'b', 'c'], [1, 2, 3]) --> {a: 1, b: 2, c: 3}
-]]
-R.zipObj = _curry2(function(keys, values)
-	local idx = 1
-	local len = math.min(#keys, #values)
-	local out = {}
-	while idx <= len do
-		out[keys[idx]] = values[idx]
-		idx = idx + 1
-	end
-	return out
-end)
-
---[[
-	Creates a new list out of the two supplied by applying the function to each
-	equally-positioned pair in the lists. The returned list is truncated to the
-	length of the shorter of the two input lists.
-	
-	@func
-	@category Array
-	@sig (a,b -> c) -> [a] -> [b] -> [c]
-	@param {Function} fn The function used to combine the two elements into one value.
-	@param {Array} list1 The first array to consider.
-	@param {Array} list2 The second array to consider.
-	@return {Array} The list made by combining same-indexed elements of `list1` and `list2`
-			using `fn`.
-	@example
-	
-		local f = (x, y) => {
-		-- ...
-		}
-		R.zipWith(f, [1, 2, 3], ['a', 'b', 'c'])
-		--> [f(1, 'a'), f(2, 'b'), f(3, 'c')]
-	@symb R.zipWith(fn, [a, b, c], [d, e, f]) = [fn(a, d), fn(b, e), fn(c, f)]
-]]
-R.zipWith = _curry3(function(fn, a, b)
-	local rv = {}
-	local idx = 1
-	local len = math.min(#a, #b)
-	while idx <= len do
-		rv[idx] = fn(a[idx], b[idx])
-		idx = idx + 1
-	end
-	return rv
-end)
-
-
-
-
-
-
-
-
-
-
---Not Implements
+-- =========================================
+-- ============ Not Implements =============
+-- =========================================
 --Transformers
 --R.identical
 --R.hasIn
 --R.keysIn
 --R.addIndex
---R.nthArg 
---R.pickAll
+--R.nthArg
 --R.reduced
 --R.toPairsIn
 --R.type
@@ -7075,10 +6817,13 @@ end)
 --R.pipeK
 --R.envolve
 
--- Renamed 
+-- ==================================
+-- ============ Renamed =============
+-- ==================================
 -- R.and_
 -- R.or_
 -- R.repeat_
 -- R.not_
+-- R.until_
 
 return R

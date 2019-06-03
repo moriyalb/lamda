@@ -76,6 +76,8 @@
 * R.tryCatch
 	* result is a function now.
 	* pass the arguments to tryer and catcher now.
+* R.pickAll added
+	* R.project is also work now.
 
 ## Bug Fixed
 * curry function
@@ -139,6 +141,12 @@
 * R.times
 	* fix description
 * R.toPairs
+* R.unfold
+* R.useWith
+	* handle the addtional arguments as `R.identity` now
+* R.append
+	* support string now.
+* R.where & R.whereEq
 
 ## Removed
 * R.containsNoCurry
@@ -160,6 +168,7 @@
 * R.set
 * R.sortBy
 	* use R.sort(R.ascend(fn)) or R.sort(R.descend(fn)) instead now.
+* R.view
 
 ## Issues
 * `nil` argument
