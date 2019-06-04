@@ -10,6 +10,18 @@ Ported from the JavaScript version https://github.com/ramda/ramda
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg?style=flat-square)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 [![MIT Licence](https://badges.frapsoft.com/os/mit/mit.svg?v=103)](https://opensource.org/licenses/mit-license.php)
 
+# Install
+
+### From Github
+```
+    git clone https://github.com/moriyalb/lamda.git
+```
+
+### From Luarocks
+```
+    sudo luarocks install --server=http://luarocks.org/manifests/moriyalb lamda
+```
+
 # Usage
 
 ```lua
