@@ -25,9 +25,9 @@ Ported from the JavaScript version https://github.com/ramda/ramda
 # Usage
 
 ```lua
-	local R = require("lamda")
-	local sayHello = R.compose(R.join(" "), R.map(R.pipe(R.toUpper, R.trim, R.take(3))), R.split(","))
-	R.call(print, sayHello("Hello, Lamda!"))
+    local R = require("lamda")
+    local sayHello = R.compose(R.join(" "), R.map(R.pipe(R.toUpper, R.trim, R.take(3))), R.split(","))
+    R.call(print, sayHello("Hello, Lamda!"))
 ```
 
 # Test
@@ -35,17 +35,17 @@ Ported from the JavaScript version https://github.com/ramda/ramda
 I use luaunit to test all functions.  
 you can test the lamda function simple like
 ```
-	lua run_test_all.lua -v
+    lua run_test_all.lua -v
 ```
 
 # Features
 
 1. Immutable  
-	* All functions is immutable without side effect. 
+    * All functions is immutable without side effect. 
 2. Functional  
-	* You can write lua code in functional style. 	
+    * You can write lua code in functional style. 	
 3. Auto curried  
-	* Most function is auto curried. Placeholder is also supported.
+    * Most function is auto curried. Placeholder is also supported.
 
 # Ramda Version
 
