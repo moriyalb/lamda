@@ -37,8 +37,22 @@ function TestUtil.test_toString()
 	this.lu.assertEquals(R.toString({}), '{}')
 	this.lu.assertEquals(R.toString({1,2,3}), '{1,2,3}')
 	this.lu.assertEquals(R.toString({'a', true, 4}), '{"a",true,4}')
-	this.lu.assertEquals(R.toString({'a', nil, true, 4}), '{1:"a",3:true,4:4}') --nil treats like absent, so this is like an object
-	this.lu.assertEquals(R.toString({{{{a = 1}}}}), '{{{{"a":1}}}}')
+	this.lu.assertEquals(R.toString({'a', nil, true, 4}), '{[1]="a",[3]=true,[4]=4}') --nil treats like absent, so this is like an object
+	this.lu.assertEquals(R.toString({{{{a = 1}}}}), '{{{{["a"]=1}}}}')
+
+	this.lu.assertEquals(R.toJson(), "[null]")
+	this.lu.assertEquals(R.toJson(nil), "[null]")
+	this.lu.assertEquals(R.toJson(1), "[1]")
+	this.lu.assertEquals(R.toJson(0), "[0]")
+	this.lu.assertEquals(R.toJson('a'), '["a"]')
+	this.lu.assertEquals(R.toJson('hello'), '["hello"]')
+	this.lu.assertEquals(R.toJson(true), '[true]')
+	this.lu.assertEquals(R.toJson(false), '[false]')
+	this.lu.assertEquals(R.toJson({}), '[]')
+	this.lu.assertEquals(R.toJson({1,2,3}), '[1,2,3]')
+	this.lu.assertEquals(R.toJson({'a', true, 4}), '["a",true,4]')
+	this.lu.assertEquals(R.toJson({'a', nil, true, 4}), '{"1":"a","3":true,"4":4}') --nil treats like absent, so this is like an object
+	this.lu.assertEquals(R.toJson({{{{a = 1}}}}), "[[[{a:1}]]]")
 end
 
 function TestUtil.test_defaultTo()
