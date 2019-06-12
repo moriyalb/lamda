@@ -1,5 +1,5 @@
 package = "lamda"
-version = "0.2.0-5"
+version = "0.2.0-6"
 source = {
    url = "git+https://github.com/moriyalb/lamda.git",
    branch = "master"
@@ -18,6 +18,6 @@ dependencies = {
 build = {
 	type = "builtin",
 	modules = {
-		lamda = "lamda.lua"
+		["lamda"] = "dist/lamda.lua"
 	}
 }
