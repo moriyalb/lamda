@@ -52,7 +52,7 @@ function TestUtil.test_toString()
 	this.lu.assertEquals(R.toJson({1,2,3}), '[1,2,3]')
 	this.lu.assertEquals(R.toJson({'a', true, 4}), '["a",true,4]')
 	this.lu.assertEquals(R.toJson({'a', nil, true, 4}), '{"1":"a","3":true,"4":4}') --nil treats like absent, so this is like an object
-	this.lu.assertEquals(R.toJson({{{{a = 1}}}}), "[[[{a:1}]]]")
+	this.lu.assertEquals(R.toJson({{{{a = 1}}}}), '[[[{"a":1}]]]')
 end
 
 function TestUtil.test_defaultTo()
