@@ -30,6 +30,10 @@ Ported from the JavaScript version https://github.com/ramda/ramda
     R.call(print, sayHello("Hello, Lamda!"))
 ```
 
+# API
+
+see https://moriyalb.github.io/lamda/
+
 # Test
 
 I use luaunit to test all functions.  
