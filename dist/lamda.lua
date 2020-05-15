@@ -5549,7 +5549,7 @@ R.assocPath = _curry3(function(path, val, obj)
 	end
 	local idx = path[1]
 	if #path > 1 then
-		local nextObj = not R.isNil(obj) and _has(idx, obj) and _isTable(obj[idx]) or {}
+		local nextObj = not R.isNil(obj) and _has(idx, obj) and _isTable(obj[idx]) and obj[idx] or {}		
 		val = R.assocPath(R.slice(2, #path + 1, path), val, nextObj)
 	end
 	if _isInteger(idx) and _isArray(obj) then
