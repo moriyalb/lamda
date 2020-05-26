@@ -16,6 +16,7 @@ end
 function TestObject.test_assocPath()
 	this.lu.assertEquals(R.assocPath({'b', 'c'}, 5, {a = 1}), {a = 1, b = {c = 5}})
 	this.lu.assertEquals(R.assocPath({'a', 'c'}, 5, {a = 1}), {a = {c = 5}})
+	this.lu.assertEquals(R.assocPath({'a', 'c'}, 5, {}), {a = {c = 5}})
 	this.lu.assertEquals(R.assocPath({'x', 'y', 'z'}, 11, {x={y={z={1}}}}), {x={y={z=11}}})
 end
 

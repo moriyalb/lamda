@@ -180,7 +180,7 @@ function load()
 end
 
 function generate()
-	local f = io.open("./doc/index.html", "w")
+	local f = io.open("./docs/index.html", "w")
 	f:write(string.format([==[
 <!DOCTYPE html>
 <html class="docs-page">

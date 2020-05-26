@@ -1,3 +1,11 @@
+# version 0.2.1
+
+## ## Bug Fixed
+* R.assocPath
+  * fix bug with passing an emtpy table
+* R.size
+  * fix bug by checking table size by iterating it
+
 # version 0.2.0
 
 ## Unit Test
