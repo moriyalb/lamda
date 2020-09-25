@@ -1,3 +1,69 @@
+
+# version 0.4.0
+
+## Notable Changes
+* APIs will match to the new ramda version(0.27.0).
+* remove random seed settings.
+
+## Modifies
+  * R.adjust
+    * exchange `fn` and `idx` param sequence.
+  * R.allPass
+    * change preds to list.
+    * curried now.(but also, the result function is not curried.)
+  * R.map
+    * when the input list is `object` type table, the returns will be an object now.
+  * R.append
+    * remove `string` param support. use R.concat instead.
+    * now this function act the same behavior as `prepend` function.
+  * R.clamp
+    * throw error now when min > max (matching the ramda behavior)
+  * R.comparator
+    * fix returns
+  * R.mod & R.mathMod
+    * change mod algorithm (now just like math.fmod)
+    * add mathMod function
+    * notice those difference please:
+      * -17 % 3 --> 1
+      * math.fmod(-17, 3) or R.mod(-17, 3) --> -2
+      * R.mathMod(-17, 3) --> 1
+      * -17 % -3 --> -2
+      * math.fmod(-17, -3) or R.mod(-17, -3) --> -2
+      * R.mathMod(-17, -3) --> nan
+  * R.insert & R.insertAll
+    * adjust the insert element index
+  * R.isEmpty
+    * `nil`, `inf`, `nan` will return false now
+  * R.prop & R.propEq
+    * take negate number for array path value now
+    * notice that ramda version is different from lamda version
+    * return nil instead of throw an error when input obj is not a real table
+  * R.replace
+    * remove count param
+    * if you want replace all the replacement str, use `R.replaceAll` instead
+
+## New Function Added
+  * R.applySpec
+  * R.applyTo
+  * R.isOdd & R.isEven
+    * lua treats `0` as truthy value, so that the simple trick for blow is now work (in any judgment conditions)
+      * local isOdd = R.mod(R.__, 2)
+  * R.N
+    * a function always return nil
+    * R.always can not do this because R.always(nil) will just return R.always as a function
+  * R.evolve
+  * R.hasPath
+  * R.identical
+  * R.invoker
+  * R.move
+  * R.nthArg
+  * R.paths
+  * R.isLowerCase & R.isUpperCase
+  * R.replaceAll
+
+## Bug Fixed
+
+
 # version 0.2.1
 
 ## ## Bug Fixed

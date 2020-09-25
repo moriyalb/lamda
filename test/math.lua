@@ -35,9 +35,6 @@ function TestMath.test_clamp()
 	this.lu.assertEquals(R.clamp(2, 5, 3), 3)
 	this.lu.assertEquals(R.clamp(2, 5, -1), 2)
 	this.lu.assertEquals(R.clamp(2, 5, 10), 5)
-	this.lu.assertEquals(R.clamp(5, 2, 10), 5)
-	this.lu.assertEquals(R.clamp(5, 2, -1), 2)
-	this.lu.assertEquals(R.clamp(5, 2)(3), 3)
 	this.lu.assertEquals(R.clamp(0, 0)(3), 0)
 end
 

@@ -169,9 +169,9 @@ function TestUtil.test_isEmpty()
 	this.lu.assertFalse(R.isEmpty(100))
 	this.lu.assertFalse(R.isEmpty("asdf"))
 	this.lu.assertFalse(R.isEmpty(function() end))
-	this.lu.assertTrue(R.isEmpty(nil))
-	this.lu.assertTrue(R.isEmpty(0/0))
-	this.lu.assertTrue(R.isEmpty(1/0))
+	this.lu.assertFalse(R.isEmpty(nil))
+	this.lu.assertFalse(R.isEmpty(0/0))
+	this.lu.assertFalse(R.isEmpty(1/0))
 	this.lu.assertTrue(R.isEmpty(""))
 	this.lu.assertTrue(R.isEmpty({}))
 end
@@ -215,6 +215,22 @@ function TestUtil.test_eqProps()
 	local obj2 = {a=10,b=2,c=3,d=4}
 	this.lu.assertTrue(R.eqProps('c', obj1, obj2))
 	this.lu.assertFalse(R.eqProps('a', obj1, obj2))
+end
+
+function TestUtil.test_identical() 
+	local a = {}
+	local b = a
+
+	this.lu.assertEquals(R.identical(100, 100), true)
+    this.lu.assertEquals(R.identical(100, '100'), false)
+    this.lu.assertEquals(R.identical('string', 'string'), true)
+    this.lu.assertEquals(R.identical({}, {}), false)
+    this.lu.assertEquals(R.identical(a, b), true)
+        
+    this.lu.assertEquals(R.identical(0/0, 0/0), true)
+
+    this.lu.assertEquals(R.identical(0/0, 42), false)
+    this.lu.assertEquals(R.identical(42, 0/0), false)    
 end
 
 function TestUtil.test_order()

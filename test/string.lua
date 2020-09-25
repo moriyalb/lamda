@@ -24,8 +24,11 @@ function TestString.test_toUpper()
 end
 
 function TestString.test_replace()
-	this.lu.assertEquals(R.replace('foo', 'bar', 1, 'foo foo foo'), 'bar foo foo')
-	this.lu.assertEquals(R.replace('foo', 'bar', 0, 'foo foo foo'), 'bar bar bar')
+	this.lu.assertEquals(R.replace('foo', 'bar', 'foo foo foo'), 'bar foo foo')
+end
+
+function TestString.test_replaceAll()
+	this.lu.assertEquals(R.replaceAll('foo', 'bar', 'foo foo foo'), 'bar bar bar')
 end
 
 function TestString.test_split()

@@ -20,15 +20,12 @@ function TestFunc.test_tf()
 end
 
 function TestFunc.test_allPass()
-	local pred = R.allPass(R.gt(5), R.lt(3))
+	local pred = R.allPass({R.gt(5), R.lt(3)})
 	this.lu.assertTrue(pred(4))
 	this.lu.assertFalse(pred(2))
 	this.lu.assertFalse(pred(8))
 
-	pred = R.allPass()
-	this.lu.assertTrue(pred())
-
-	pred = R.allPass(R.o(R.equals(3), R.size), R.all(R.equals(3)))
+	pred = R.allPass({R.o(R.equals(3), R.size), R.all(R.equals(3))})
 	this.lu.assertTrue(pred({3, 3, 3}))
 	this.lu.assertFalse(pred({3, 3}))
 	this.lu.assertFalse(pred({}))
@@ -43,15 +40,12 @@ function TestFunc.test_and_()
 end
 
 function TestFunc.test_anyPass()
-	local pred = R.anyPass(R.gt(3), R.lt(5))
+	local pred = R.anyPass({R.gt(3), R.lt(5)})
 	this.lu.assertTrue(pred(2))
 	this.lu.assertTrue(pred(8))
 	this.lu.assertFalse(pred(4))
 
-	pred = R.anyPass()
-	this.lu.assertFalse(pred())
-
-	pred = R.anyPass(R.o(R.equals(3), R.size), R.all(R.equals(3)))
+	pred = R.anyPass({R.o(R.equals(3), R.size), R.all(R.equals(3))})
 	this.lu.assertTrue(pred({3, 3, 3, 3, 3, 3}))
 	this.lu.assertFalse(pred({2, 3}))
 	this.lu.assertTrue(pred({}))
@@ -66,6 +60,21 @@ function TestFunc.test_apply()
 
 	local max = R.apply(math.max)
 	this.lu.assertEquals(max({1,2,3,4}), 4)
+end
+
+function TestFunc.test_applySpec()
+	this.lu.assertEquals(R.applySpec({})(), {})
+	this.lu.assertEquals(R.applySpec({ v = R.inc, u = R.dec })(1), { v = 2, u = 0 })
+	this.lu.assertEquals(R.applySpec({ sum = R.add })(1, 2), { sum = 3 })
+	this.lu.assertEquals(R.applySpec(
+		{ unnested = R.always(0), nested = { sum = R.add } })(1, 2),
+		{ unnested = 0, nested = { sum = 3 } }
+	)
+	this.lu.assertEquals(R.applySpec({map = R.prop('a')})({a = 1}), {map = 1})
+end
+
+function TestFunc.test_applyTo()
+	this.lu.assertEquals(R.applyTo(21, R.multiply(2)), 42)	
 end
 
 function TestFunc.test_ascend()
@@ -225,6 +234,24 @@ function TestFunc.test_ifelse()
 	this.lu.assertEquals(whaterve({count = 1}), {})
 end
 
+function TestFunc.test_invoker()
+	local obj = {v = {1, 2}}
+	function obj:concat(...)		
+		local args = {...}
+		return R.concat(self.v, args)
+	end
+
+	local concat2 = R.invoker(2, 'concat')
+	this.lu.assertEquals(concat2(3, 4, obj), {1, 2, 3, 4})
+
+	this.lu.assertError(R.invoker(0, 'foo'), obj)
+	this.lu.assertError(R.invoker(0, 'foo'), {})
+
+	this.lu.assertEquals(concat2(3)(4)(obj), {1, 2, 3, 4})
+	this.lu.assertEquals(concat2(3, 4)(obj), {1, 2, 3, 4})
+	this.lu.assertEquals(concat2(3)(4, obj), {1, 2, 3, 4})
+end
+
 function TestFunc.test_juxt()
 	local getRange = R.juxt({math.min, math.max})
 	this.lu.assertEquals(getRange(1,-2,3,-4), {-4,3})
@@ -234,21 +261,19 @@ end
 
 function TestFunc.test_map()
 	this.lu.assertEquals(R.map(R.add(3), {1,2,3}), {4,5,6})
-	this.lu.assertEquals(R.sort(R.lt, R.map(R.add(3), {a=1,b=2,c=3})), {4,5,6}) --map could not assume the key sequences
-	local revert_map = R.compose(R.merge, R.unpack, R.map(R.flip(R.objOf)))
-	this.lu.assertEquals({a=1,b=2,c=3}, revert_map({a=1,b=2,c=3}))
+	this.lu.assertEquals(R.map(R.add(3), {a=1,b=2,c=3}), {a=4,b=5,c=6})
 end
 
 function TestFunc.test_mapAccum()
 	local digits = {'1', '2', '3', '4'}
 	local appender = R.juxt({R.concat, R.concat})
-	this.lu.assertEquals(R.mapAccum(appender, 0, digits), {"01234", {"01", "012", "0123", "01234"}})
+	this.lu.assertEquals(R.mapAccum(appender, "0", digits), {"01234", {"01", "012", "0123", "01234"}})
 end
 
 function TestFunc.test_mapAccumRight()
 	local digits = {'1', '2', '3', '4'}
 	local appender = R.juxt({R.concat, R.concat})
-	this.lu.assertEquals(R.mapAccumRight(appender, 5, digits), {{'12345', '2345', '345', '45'}, '12345'})	
+	this.lu.assertEquals(R.mapAccumRight(appender, "5", digits), {{'12345', '2345', '345', '45'}, '12345'})	
 end
 
 function TestFunc.test_memoizeWith()
@@ -295,14 +320,57 @@ function TestFunc.test_or_()
 	this.lu.assertFalse(R.or_(false, false))
 end
 
+function TestFunc.test_nthArg()
+	this.lu.assertEquals(R.nthArg(1)('foo', 'bar'), 'foo')
+	this.lu.assertEquals(R.nthArg(2)('foo', 'bar'), 'bar')
+	this.lu.assertEquals(R.nthArg(0)('foo', 'bar'), 'foo')
+
+	this.lu.assertEquals(R.nthArg(-1)('foo', 'bar'), 'bar')
+	this.lu.assertEquals(R.nthArg(-2)('foo', 'bar'), 'foo')
+	this.lu.assertIsNil(R.nthArg(-3)('foo', 'bar'))
+
+	this.lu.assertEquals(R.nthArg(2)('foo', 'bar'), R.nthArg(2)('foo')('bar'))
+	this.lu.assertEquals(R.nthArg(3)('foo', 'bar', 'baz'), R.nthArg(3)('foo')('bar')('baz'))
+end
+
 function TestFunc.test_pipe()
 	local f = R.pipe(R.add(1), R.add(2), R.minus(R.__, 3), R.multiply(4), R.add(5))
 	this.lu.assertEquals(f(10), 45)
 end
 
+function TestFunc.test_pipeWith()
+	local f = R.pipeWith(function(f, res)
+		return f(res)
+	end)({tonumber, R.multiply, R.map})
+
+	this.lu.assertEquals(f('10')({1, 2, 3}), {10, 20, 30})
+
+	local pipeWhenNotZero = R.pipeWith(function(f, res)
+		return res == 0 and 0 or f(res)
+	end)
+	local f = pipeWhenNotZero({tonumber, R.ifElse(R.isOdd, R.identity, R.always(0)), R.inc})
+	this.lu.assertEquals(f('1'), 2)
+	this.lu.assertEquals(f('2'), 0)
+end
+
 function TestFunc.test_compose()
 	local f = R.compose(R.add(1), R.add(2), R.minus(R.__, 3), R.multiply(4), R.add(5))
-	this.lu.assertEquals(f(10), 60)
+	this.lu.assertEquals(f(10), 60)	
+end
+
+function TestFunc.test_composeWith()
+	local f = R.composeWith(function(f, res)
+		return f(res)
+	end)({R.map, R.multiply, tonumber})
+
+	this.lu.assertEquals(f('10')({1, 2, 3}), {10, 20, 30})
+
+	local composeWhenNotNil = R.composeWith(function(f, res)
+		if R.isNil(res) then return nil else return f(res) end
+	end)
+	local f = composeWhenNotNil({R.inc, R.ifElse(R.isOdd, R.identity, R.N), tonumber})
+	this.lu.assertEquals(f('1'), 2)
+	this.lu.assertEquals(f('2'), nil)
 end
 
 function TestFunc.test_of()
@@ -352,9 +420,12 @@ end
 
 function TestFunc.test_tryCatch()
 	this.lu.assertTrue(R.tryCatch(R.prop('x'), R.F)({x = true}))
-	this.lu.assertFalse(R.tryCatch(R.prop('x'), R.F, R.F)({x = true}))
-	this.lu.assertFalse(R.tryCatch(R.prop('x'), R.F)(1))
-	this.lu.assertTrue(R.tryCatch(R.prop('x'), R.F, R.T)(1))
+	this.lu.assertEquals(R.tryCatch(function() error('foo') end, R.always('catched'))('bar'), 'catched')
+	this.lu.assertEquals(R.tryCatch(R.times(R.identity), R.always({}))('s'), {})
+	this.lu.assertEquals(R.tryCatch(
+		function() error('foo') end, 
+		function(err, value) return value end
+	)('bar'), 'bar')
 end
 
 function TestFunc.test_unapply()
@@ -389,7 +460,7 @@ end
 function TestFunc.test_when()
 	local truncate = R.when(
 		R.compose(R.gt(R.__, 10), R.size),
-		R.pipe(R.take(10), R.append('...'))
+		R.pipe(R.take(10), R.concat(R.__, '...'))
 	)
 	this.lu.assertEquals(truncate('12345'), '12345')
 	this.lu.assertEquals(truncate('0123456789ABC'), '0123456789...')

@@ -45,6 +45,44 @@ function TestObject.test_dissocPath()
 	this.lu.assertEquals(obj_dissoced, obj)
 end
 
+function TestObject.test_evolve()
+	local transf = {elapsed = R.add(1), remaining = R.add(-1)}
+    local object = {name = 'Tomato', elapsed = 100, remaining = 1400}
+    local expected = {name = 'Tomato', elapsed = 101, remaining = 1399}
+	this.lu.assertEquals(R.evolve(transf, object), expected)
+	
+	transf = {n = R.add(1), m = R.add(1)}
+	object = {m = 3}
+	expected = {m = 4}
+	this.lu.assertEquals(R.evolve(transf, object), expected)
+
+	transf = {elapsed = R.add(1), remaining = R.add(-1)}
+	object = {name = 'Tomato', elapsed = 100, remaining = 1400}
+	expected = {name = 'Tomato', elapsed = 100, remaining = 1400}
+	R.evolve(transf, object)
+	this.lu.assertEquals(object, expected)
+
+	transf = {nested = {second = R.add(-1), third = R.add(1)}}
+	object = {first = 1, nested = {second = 2, third = 3}}
+	expected = {first = 1, nested = {second = 1, third = 4}}
+	this.lu.assertEquals(R.evolve(transf, object), expected)
+
+	transf = {n = 2, m = 'foo'}
+	object = {n = 0, m = 1}
+	expected = {n = 0, m = 1}
+	this.lu.assertEquals(R.evolve(transf, object), expected)
+
+	transf = {n = nil}
+	object = {n = 0}
+	expected = {n = 0}
+	this.lu.assertEquals(R.evolve(transf, object), expected)
+
+	transf = {R.add(1), R.add(-1)}
+	object = {100, 1400}
+	expected = {101, 1399}
+	this.lu.assertEquals(R.evolve(transf, object), expected)
+end
+
 function TestObject.test_fromPairs()
 	this.lu.assertEquals(R.fromPairs({{'a',1}, {'b', 2}}), {a = 1, b = 2})
 	this.lu.assertEquals(R.fromPairs({}), {})
@@ -56,6 +94,42 @@ function TestObject.test_has()
 	local has = R.has(R.__, {a = 1})
 	this.lu.assertTrue(has('a'))
 	this.lu.assertFalse(has('c'))
+end
+
+function TestObject.test_hasPath()
+	local obj = {
+		objVal = {b = {c = 'c'}},
+		falseVal = false,
+		nullVal = nil,
+		arrayVal = {'arr'}
+	}
+
+	this.lu.assertTrue(R.hasPath({'objVal'})(obj))
+	this.lu.assertFalse(R.hasPath({'Unknown'}, obj))
+	
+	this.lu.assertTrue(R.hasPath({'objVal', 'b'}, obj))
+	this.lu.assertFalse(R.hasPath({'objVal', 'Unknown'}, obj))
+	this.lu.assertTrue(R.hasPath({'objVal', 'b', 'c'}, obj))
+	this.lu.assertFalse(R.hasPath({'objVal', 'b', 'Unknown'}, obj))
+	this.lu.assertTrue(R.hasPath({'arrayVal'}, obj))
+	this.lu.assertTrue(R.hasPath({'arrayVal', 1}, obj))
+	this.lu.assertFalse(R.hasPath({'arrayVal', 0}, obj))
+
+	this.lu.assertTrue(R.hasPath({'falseVal'}, obj))
+	this.lu.assertFalse(R.hasPath({'nullVal'}, obj))
+
+	this.lu.assertFalse(R.hasPath({'falseVal', 'child', 'grandchild'}, obj))
+	this.lu.assertFalse(R.hasPath({'arrayVal', 'child', 'grandchild'}, obj))
+	this.lu.assertFalse(R.hasPath({'arrayVal', 0, 'child', 'grandchild'}, obj))
+
+	this.lu.assertTrue(R.hasPath({1}, {1, 2}))
+	this.lu.assertFalse(R.hasPath({3}, {1, 2}))
+
+	this.lu.assertFalse(R.hasPath({}, obj))
+
+	this.lu.assertFalse(R.hasPath({'a', 'b'}, false))
+	this.lu.assertFalse(R.hasPath({'a', 'b'}, ''))
+	this.lu.assertFalse(R.hasPath({'a', 'b'}, 3))
 end
 
 function TestObject.test_invert()
@@ -76,7 +150,7 @@ function TestObject.test_invert()
 end
 
 function TestObject.test_merge()
-	this.lu.assertEquals(R.merge({a=1,b=2}, {a=2,c=3}, {a=3,d=4}), {a=3,b=2,c=3,d=4})
+	this.lu.assertEquals(R.merge({a=1,b=2}, {a=2,c=3}), {a=2,b=2,c=3})
 	this.lu.assertEquals(R.mergeAll({{a=1,b=2}, {a=2,c=3}, {a=3,d=4}}), {a=3,b=2,c=3,d=4})
 end
 
@@ -146,6 +220,35 @@ end
 function TestObject.test_pathOr()
 	this.lu.assertEquals(R.pathOr('N/A', {'a', 'b'}, {a = {b = 2}}), 2)
 	this.lu.assertEquals(R.pathOr('N/A', {'a', 'b'}, {a = {c = 2}}), "N/A")
+end
+
+function TestObject.test_paths()
+	local obj = {
+		a = {
+			b = {
+				c = 1, d = 2
+			}
+		},
+		p = {{q = 3}, 'Hi'},
+		x = {
+			y = 'Alice',
+			z = {{{}}}
+		}
+	}
+
+	this.lu.assertEquals(R.paths({{'a', 'b', 'c'}, {'x', 'y'}}, obj), {1, 'Alice'})
+	this.lu.assertEquals(R.paths({{'a', 'b', 'd'}, {'p', 'q'}}, obj), {2})
+	this.lu.assertEquals(R.paths({{'p', 1, 'q'}, {'x', 'z', 1, 1}}, obj), {3, {}})
+	this.lu.assertEquals(R.paths({{'p', 1, 'q'}, {'x', 'z', 3, 1}}, obj), {3})
+
+	this.lu.assertEquals(R.paths({{'p', -2, 'q'}, {'p', -1}}, obj), {3, 'Hi'})
+	this.lu.assertEquals(R.paths({{'p', -4, 'q'}, {'x', 'z', -1, 1}}, obj), {[2]={}})
+
+	this.lu.assertEquals(R.paths({{'a', 'b'}}, obj), {obj.a.b})
+	this.lu.assertEquals(R.paths({{'p', 1}}, obj), {obj.p[1]})
+
+	this.lu.assertEquals(R.paths({{'a', 'x', 'y'}}, obj), {})
+	this.lu.assertEquals(R.paths({{'p', 3}}, obj), {})
 end
 
 function TestObject.test_pluck()
