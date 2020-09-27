@@ -53,7 +53,7 @@ you can test the lamda function simple like
 
 # Ramda Version
 
-* Based on ramda@0.24.1
+* Based on ramda@0.26.0
 	
 # Notice
 

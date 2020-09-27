@@ -2,34 +2,50 @@ local R = require("../dist/lamda")
 
 TestFunc = {}
 local this = TestFunc
+local msg = "default error msg"
+
+function TestFunc.test_allPass()
+	msg = 'reports whether all predicates are satisfied by a given value'
+	local pred = R.allPass({R.gt(5), R.lt(3)})
+	this.lu.assertTrue(pred(4), msg)
+	this.lu.assertFalse(pred(2), msg)
+	this.lu.assertFalse(pred(8), msg)
+
+	pred = R.allPass({R.o(R.equals(3), R.size), R.all(R.equals(3))})
+	this.lu.assertTrue(pred({3, 3, 3}), msg)
+	this.lu.assertFalse(pred({3, 3}), msg)
+	this.lu.assertFalse(pred({}), msg)
+	this.lu.assertFalse(pred({2, 3, 3}), msg)
+		
+	msg = 'returns true on empty predicate list'
+	this.lu.assertTrue(R.allPass({})(3), msg)
+end
 
 function TestFunc.test_always()
-	local v_zero = R.always(0)
-	this.lu.assertEquals(v_zero(), 0)
-	this.lu.assertEquals(v_zero(), v_zero())
+	msg = 'returns a function that returns the object initially supplied'
+	local theMeaning = R.always(42)
+	this.lu.assertEquals(theMeaning(), 42, msg)
+	this.lu.assertEquals(theMeaning(10), 42, msg)
+	this.lu.assertEquals(theMeaning(false), 42, msg)
 
+	msg = 'works with various types'
+	this.lu.assertEquals(R.always(false)(), false, msg)
+    this.lu.assertEquals(R.always('abc')(), 'abc', msg)
+	this.lu.assertEquals(R.always({a = 1, b = 2})(), {a = 1, b = 2}, msg)
+	
+    local obj = {a = 1, b = 2}
+    this.lu.assertEquals(R.always(obj)(), obj, msg)
+    
+	msg = 'returns a curried function'
 	local always_curried = R.always()
 	local v_two = always_curried(2)
-	this.lu.assertEquals(v_two(), 2)
-	this.lu.assertEquals(v_two(), v_two())
+	this.lu.assertEquals(v_two(), 2, msg)
+	this.lu.assertEquals(v_two(), v_two(), msg)
 end
 
 function TestFunc.test_tf()
 	this.lu.assertFalse(R.F())
 	this.lu.assertTrue(R.T())
-end
-
-function TestFunc.test_allPass()
-	local pred = R.allPass({R.gt(5), R.lt(3)})
-	this.lu.assertTrue(pred(4))
-	this.lu.assertFalse(pred(2))
-	this.lu.assertFalse(pred(8))
-
-	pred = R.allPass({R.o(R.equals(3), R.size), R.all(R.equals(3))})
-	this.lu.assertTrue(pred({3, 3, 3}))
-	this.lu.assertFalse(pred({3, 3}))
-	this.lu.assertFalse(pred({}))
-	this.lu.assertFalse(pred({2, 3, 3}))
 end
 
 function TestFunc.test_and_()
@@ -416,6 +432,19 @@ function TestFunc.test_tap()
 		count = count + 1
 	end, count)
 	this.lu.assertEquals(count + r, 2 + 1)
+end
+
+function TestFunc.test_thunkify()
+	local input = function(a0, a1) end
+	local thunk = R.thunkify(input)
+	this.lu.assertTrue(R.isFunction(thunk))
+	this.lu.assertTrue(R.isFunction(thunk(42, 'xyz')))
+
+	thunk = R.thunkify(R.add(2))
+	this.lu.assertEquals(thunk(40)(), 42)
+
+	thunk = R.thunkify(R.add, 2)
+	this.lu.assertEquals(thunk(2)(40)(), 42)
 end
 
 function TestFunc.test_tryCatch()

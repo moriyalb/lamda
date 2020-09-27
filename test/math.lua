@@ -2,22 +2,32 @@ local R = require("../dist/lamda")
 
 TestMath = {}
 local this = TestMath
+local msg = "default error msg"
+local MARGIN = 0.0001
 
 function TestMath.test_abs()
-	this.lu.assertEquals(R.abs(1), 1)
-	this.lu.assertEquals(R.abs(-1), 1)
-	this.lu.assertError(R.abs, '1')
+	msg = 'get absolute value from a number'
+	this.lu.assertEquals(R.abs(1), 1, msg)
+	this.lu.assertEquals(R.abs(-1), 1, msg)
+
+	msg = 'get error if input is not a number'
+	this.lu.assertError(R.abs, '1', msg)
 end
 
 function TestMath.test_add()
-	this.lu.assertAlmostEquals(R.add(2, 3), 5)
-	this.lu.assertAlmostEquals(R.plus(2.2, 3.9), 6.1)
+	msg = 'adds together two numbers'
+	this.lu.assertEquals(R.add(3, 7), 10, msg)
+	this.lu.assertAlmostEquals(R.plus(2.2, 3.9), 6.1, MARGIN, msg)
 	
+	msg = 'coerces its arguments to numbers'
+	this.lu.assertEquals(R.add('1', '2'), 3, msg)
+	this.lu.assertEquals(R.add(1, '2'), 3, msg)
+	
+	msg = 'add function should be curried'
 	local v_add_curried = R.add(1.5)
-	this.lu.assertAlmostEquals(v_add_curried(2.5), 4)
-
+	this.lu.assertAlmostEquals(v_add_curried(2.5), 4, MARGIN, msg)
 	local v_add_to_curried = R.add(R.__, 1.5)
-	this.lu.assertAlmostEquals(v_add_to_curried(2.5), 4)
+	this.lu.assertAlmostEquals(v_add_to_curried(2.5), 4, MARGIN, msg)
 end
 
 function TestMath.test_subtract()

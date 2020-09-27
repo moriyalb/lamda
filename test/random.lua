@@ -1,6 +1,7 @@
 local R = require("../dist/lamda")
 TestRandom = {}
 local this = TestRandom
+local msg = "default error msg"
 
 function TestRandom.test_sample()
 	local list = {}

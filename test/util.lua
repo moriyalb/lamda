@@ -2,6 +2,7 @@ local R = require("../dist/lamda")
 
 TestUtil = {}
 local this = TestUtil
+local msg = "default error msg"
 
 function TestUtil.test_first() 
 	local head = R.first()

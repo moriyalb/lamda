@@ -2,7 +2,7 @@
 # version 0.4.0
 
 ## Notable Changes
-* APIs will match to the new ramda version(0.27.0).
+* APIs will match to the new ramda version(0.26.0).
 * remove random seed settings.
 
 ## Modifies

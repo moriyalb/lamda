@@ -1,6 +1,7 @@
 local R = require("../dist/lamda")
 TestString = {}
 local this = TestString
+local msg = "default error msg"
 
 function TestString.test_join()
 	this.lu.assertEquals(R.join(" ", {1,2,3}), "1 2 3")

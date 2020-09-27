@@ -1,6 +1,7 @@
 local R = require("../dist/lamda")
 TestObject = {}
 local this = TestObject
+local msg = "default error msg"
 
 function TestObject.test_assoc()
 	this.lu.assertEquals(R.assoc("c", 5, {a = 1}), {a = 1, c = 5})

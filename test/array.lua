@@ -2,28 +2,51 @@ local R = require("../dist/lamda")
 
 TestArray = {}
 local this = TestArray
+local msg = "default error msg"
 
 function TestArray.test_adjust()
 	local tbl = {1, 2, 3}
-	this.lu.assertEquals(R.adjust(1, R.add(10), tbl), {11, 2, 3})
-	this.lu.assertEquals(R.adjust(2, R.add(10), tbl), {1, 12, 3})
-	this.lu.assertEquals(R.adjust(-1, R.add(10), tbl), {1, 2, 13})
-	this.lu.assertEquals(R.adjust(-3, R.add(10), tbl), {11, 2, 3})
-	this.lu.assertEquals(R.adjust(0, R.add(10), tbl), tbl)
-	this.lu.assertEquals(R.adjust(100, R.add(10), tbl), tbl)
 
+	msg = 'applies the given function to the value at the given index of the supplied array'	
+	this.lu.assertEquals(R.adjust(1, R.add(10), tbl), {11, 2, 3}, msg)
+	this.lu.assertEquals(R.adjust(2, R.add(10), tbl), {1, 12, 3}, msg)
+
+	msg = 'offsets negative indexes from the end of the array'
+	this.lu.assertEquals(R.adjust(-1, R.add(10), tbl), {1, 2, 13}, msg)
+	this.lu.assertEquals(R.adjust(-3, R.add(10), tbl), {11, 2, 3}, msg)
+
+
+	msg = 'returns the original array if the supplied index is out of bounds'
+	this.lu.assertEquals(R.adjust(0, R.add(10), tbl), tbl, msg)
+	this.lu.assertEquals(R.adjust(10, R.add(10), tbl), tbl, msg)
+	this.lu.assertEquals(R.adjust(-10, R.add(10), tbl), tbl, msg)
 	tbl = {}
-	this.lu.assertEquals(R.adjust(1, R.add(10), tbl), tbl)
-	this.lu.assertEquals(R.adjust(-1, R.add(10), tbl), tbl)
+	this.lu.assertEquals(R.adjust(1, R.add(10), tbl), tbl, msg)
+	this.lu.assertEquals(R.adjust(-1, R.add(10), tbl), tbl, msg)
+
+	msg = 'does not mutate the original array'
+	tbl = {0, 1, 2, 3}
+	this.lu.assertEquals(R.adjust(3, R.add(1), tbl), {0, 1, 3, 3}, msg)
+	this.lu.assertEquals(tbl, {0, 1, 2, 3}, msg)
 end
 
 function TestArray.test_all()
-	local tbl = {3, 3, 3, 3}
-	this.lu.assertTrue(R.all(R.equals(3), tbl))
-	this.lu.assertFalse(R.all(R.equals(2))(tbl))
+	msg = 'returns true if all elements satisfy the predicate'
+	this.lu.assertTrue(R.all(R.isEven, {2, 4, 6, 8, 10, 12}), msg)
+	this.lu.assertTrue(R.all(R.equals(false), {false, false, false}), msg)
 
-	tbl = {}
-	this.lu.assertTrue(R.all(R.equals(0), tbl))
+	msg = 'returns false if any element fails to satisfy the predicate'
+	this.lu.assertFalse(R.all(R.isEven, {2, 4, 6, 8, 9, 10}), msg)
+
+	msg = 'returns true for an empty list'
+	this.lu.assertTrue(R.all(R.T, {}), msg)
+
+	msg = 'works with more complex objects'	
+	local xs = {{x = 'abc'}, {x = 'ade'}, {x = 'fghiajk'}}
+	local len3 = function(o) return R.size(o.x) == 3 end
+	local hasA = function(o) return R.indexOf('a', o.x) > -1 end
+	this.lu.assertFalse(R.all(len3, xs), msg)
+	this.lu.assertTrue(R.all(hasA, xs), msg)
 end
 
 function TestArray.test_any()
